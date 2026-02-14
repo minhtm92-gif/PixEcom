@@ -319,3 +319,4 @@ Everything is set up and documented. Just follow **QUICK_START_GITLAB.md** and y
 **Need help?** All guides are in the repository. Start with QUICK_START_GITLAB.md!
 
 Good luck with your deployment! 🎉
+# Migration complete
