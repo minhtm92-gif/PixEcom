@@ -1,0 +1,47 @@
+# Multi-stage Dockerfile for Railway deployment
+# Optimized for monorepo with apps/api backend
+
+FROM node:20-alpine AS base
+RUN corepack enable
+WORKDIR /app
+
+# Install dependencies
+FROM base AS deps
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
+COPY apps/api/package.json apps/api/
+COPY packages/shared/package.json packages/shared/
+RUN pnpm install --frozen-lockfile
+
+# Build application
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY packages/shared/ packages/shared/
+COPY apps/api/ apps/api/
+COPY package.json pnpm-workspace.yaml turbo.json ./
+
+# Generate Prisma Client and build
+WORKDIR /app/apps/api
+RUN pnpm prisma generate
+RUN pnpm build
+
+# Production image
+FROM node:20-alpine AS runner
+RUN corepack enable
+WORKDIR /app
+
+# Copy necessary files
+COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/apps/api/node_modules ./node_modules
+COPY --from=builder /app/apps/api/package.json ./package.json
+COPY --from=builder /app/packages/shared ./packages/shared
+
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=3001
+
+EXPOSE 3001
+
+# Start the application
+CMD ["node", "dist/main.js"]
