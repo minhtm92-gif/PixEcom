@@ -218,43 +218,16 @@ deploy_railway_backend:
     - job: build_backend
       artifacts: true
     - migrate_database
+  image: alpine:latest
   before_script:
-    - npm install -g @railway/cli@${RAILWAY_VERSION} pnpm@${PNPM_VERSION}
-    - |
-      if [ -z "$RAILWAY_TOKEN" ]; then
-        echo "❌ ERROR: RAILWAY_TOKEN not set"
-        exit 1
-      fi
-    - |
-      if [ -z "$RAILWAY_PROJECT_ID" ]; then
-        echo "❌ ERROR: RAILWAY_PROJECT_ID not set"
-        exit 1
-      fi
-    - |
-      if [ -z "$RAILWAY_SERVICE_ID" ]; then
-        echo "❌ ERROR: RAILWAY_SERVICE_ID not set"
-        exit 1
-      fi
+    - apk add --no-cache bash curl jq
+    - chmod +x .gitlab/scripts/deploy-railway.sh
   script:
-    - echo "🚀 Deploying backend service to Railway..."
-    - cd apps/api
-    - echo "📦 Verifying build artifacts..."
-    - ls -la dist/
-    - echo "🔧 Service 'backend' | ID $RAILWAY_SERVICE_ID"
-    - echo "🌐 Project ID $RAILWAY_PROJECT_ID"
-    - |
-      echo "🚂 Uploading to Railway..."
-      railway up --service=$RAILWAY_SERVICE_ID --detach || {
-        echo "❌ Railway deployment failed with exit code $?"
-        echo "📋 Checking Railway status..."
-        railway status || echo "Status check failed"
-        exit 1
-      }
-    - echo "✅ Backend deployment initiated successfully"
-    - echo "📍 Check Railway dashboard for deployment status"
-    - echo "🔗 https://railway.app/project/$RAILWAY_PROJECT_ID"
+    - echo "🚀 Deploying backend to Railway using GraphQL API..."
+    - ./.gitlab/scripts/deploy-railway.sh
   environment:
     name: production-backend
+    url: https://backend-production-46ad.up.railway.app
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
 
