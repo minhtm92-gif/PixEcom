@@ -1,0 +1,175 @@
+name: Deployment Notifications
+
+on:
+  workflow_run:
+    workflows: ["Deploy AWS CDN"]
+    types:
+      - completed
+
+jobs:
+  notify:
+    name: Send Deployment Notification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [ "${{ github.event.workflow_run.conclusion }}" == "success" ]; then
+            echo "status=✅ Success" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+            echo "emoji=🎉" >> $GITHUB_OUTPUT
+          else
+            echo "status=❌ Failed" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+            echo "emoji=🚨" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create deployment summary
+        id: summary
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+          COMMIT_SHA=$(git log -1 --pretty=%h)
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
+
+          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "commit_author=$COMMIT_AUTHOR" >> $GITHUB_OUTPUT
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "workflow_url=$WORKFLOW_URL" >> $GITHUB_OUTPUT
+
+      # Slack Notification (Optional - requires SLACK_WEBHOOK_URL secret)
+      - name: Notify Slack
+        if: ${{ vars.ENABLE_SLACK_NOTIFICATIONS == 'true' }}
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "${{ steps.status.outputs.emoji }} CDN Deployment ${{ steps.status.outputs.status }}",
+              "attachments": [
+                {
+                  "color": "${{ steps.status.outputs.color }}",
+                  "fields": [
+                    {
+                      "title": "Status",
+                      "value": "${{ steps.status.outputs.status }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Environment",
+                      "value": "production",
+                      "short": true
+                    },
+                    {
+                      "title": "Commit",
+                      "value": "<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.summary.outputs.commit_sha }}> by ${{ steps.summary.outputs.commit_author }}",
+                      "short": false
+                    },
+                    {
+                      "title": "Message",
+                      "value": "${{ steps.summary.outputs.commit_msg }}",
+                      "short": false
+                    },
+                    {
+                      "title": "Workflow",
+                      "value": "<${{ steps.summary.outputs.workflow_url }}|View Run>",
+                      "short": false
+                    }
+                  ],
+                  "footer": "PixEcom CDN Deployment",
+                  "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+                  "ts": ${{ github.event.workflow_run.updated_at }}
+                }
+              ]
+            }
+
+      # Discord Notification (Optional - requires DISCORD_WEBHOOK secret)
+      - name: Notify Discord
+        if: ${{ vars.ENABLE_DISCORD_NOTIFICATIONS == 'true' }}
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          username: "PixEcom Bot"
+          avatar-url: "https://cdn-icons-png.flaticon.com/512/6295/6295417.png"
+          embed-title: "${{ steps.status.outputs.emoji }} CDN Deployment ${{ steps.status.outputs.status }}"
+          embed-description: |
+            **Commit:** ${{ steps.summary.outputs.commit_sha }} by ${{ steps.summary.outputs.commit_author }}
+            **Message:** ${{ steps.summary.outputs.commit_msg }}
+            **Environment:** production
+            [View Workflow](${{ steps.summary.outputs.workflow_url }})
+          embed-color: ${{ github.event.workflow_run.conclusion == 'success' && '3066993' || '15158332' }}
+
+      # Microsoft Teams Notification (Optional - requires TEAMS_WEBHOOK secret)
+      - name: Notify Microsoft Teams
+        if: ${{ vars.ENABLE_TEAMS_NOTIFICATIONS == 'true' }}
+        uses: dhollerbach/actions.send-message-to-ms-teams@1.0.10
+        with:
+          webhook: ${{ secrets.TEAMS_WEBHOOK }}
+          message: |
+            **${{ steps.status.outputs.emoji }} CDN Deployment ${{ steps.status.outputs.status }}**
+
+            - **Status:** ${{ steps.status.outputs.status }}
+            - **Environment:** production
+            - **Commit:** ${{ steps.summary.outputs.commit_sha }} by ${{ steps.summary.outputs.commit_author }}
+            - **Message:** ${{ steps.summary.outputs.commit_msg }}
+            - **Workflow:** [${{ steps.summary.outputs.workflow_url }}](${{ steps.summary.outputs.workflow_url }})
+
+      # Email Notification via GitHub (Always enabled)
+      - name: Create Issue on Failure
+        if: github.event.workflow_run.conclusion == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 CDN Deployment Failed',
+              body: `
+            ## Deployment Failure Report
+
+            **Status:** ❌ Failed
+            **Environment:** production
+            **Commit:** ${{ steps.summary.outputs.commit_sha }}
+            **Author:** ${{ steps.summary.outputs.commit_author }}
+            **Message:** ${{ steps.summary.outputs.commit_msg }}
+
+            **Workflow Run:** ${{ steps.summary.outputs.workflow_url }}
+
+            ### Next Steps
+            1. Review the [workflow logs](${{ steps.summary.outputs.workflow_url }})
+            2. Check AWS CloudFormation events
+            3. Verify AWS credentials and permissions
+            4. Review recent code changes
+
+            ### Common Issues
+            - AWS credentials expired or invalid
+            - Insufficient IAM permissions
+            - CloudFormation stack in failed state
+            - Resource limits exceeded
+
+            ---
+            *This issue was automatically created by GitHub Actions*
+              `,
+              labels: ['deployment', 'cdn', 'urgent']
+            });
+            console.log('Created issue:', issue.data.html_url);
+
+      - name: Summary
+        run: |
+          echo "## 📢 Deployment Notification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.status.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ steps.summary.outputs.commit_sha }} by ${{ steps.summary.outputs.commit_author }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Message:** ${{ steps.summary.outputs.commit_msg }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ github.event.workflow_run.conclusion }}" == "success" ]; then
+            echo "✅ Notifications sent successfully!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Deployment failed. Issue created for tracking." >> $GITHUB_STEP_SUMMARY
+          fi

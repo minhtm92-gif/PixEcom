@@ -1,0 +1,128 @@
+name: Invalidate CDN Cache
+
+on:
+  # Trigger on successful deployment of main application
+  workflow_run:
+    workflows: ["Deploy Application"]
+    types:
+      - completed
+    branches:
+      - main
+      - production
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      paths:
+        description: 'Paths to invalidate (default: /*)'
+        required: false
+        default: '/*'
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  invalidate-cache:
+    name: Invalidate CloudFront Cache
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get CloudFront Distribution ID
+        id: get-distribution
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || 'production' }}"
+          STACK_NAME="pixecom-cdn-$ENVIRONMENT"
+
+          echo "Getting distribution ID for stack: $STACK_NAME"
+
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name $STACK_NAME \
+            --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' \
+            --output text)
+
+          if [ -z "$DISTRIBUTION_ID" ]; then
+            echo "❌ Error: Could not find distribution ID for stack $STACK_NAME"
+            exit 1
+          fi
+
+          echo "distribution_id=$DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "✅ Distribution ID: $DISTRIBUTION_ID"
+
+      - name: Create Cache Invalidation
+        id: invalidate
+        run: |
+          PATHS="${{ github.event.inputs.paths || '/*' }}"
+          DISTRIBUTION_ID="${{ steps.get-distribution.outputs.distribution_id }}"
+
+          echo "Creating invalidation for paths: $PATHS"
+
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id $DISTRIBUTION_ID \
+            --paths "$PATHS" \
+            --query 'Invalidation.Id' \
+            --output text)
+
+          echo "invalidation_id=$INVALIDATION_ID" >> $GITHUB_OUTPUT
+          echo "✅ Invalidation created: $INVALIDATION_ID"
+
+      - name: Wait for Invalidation
+        run: |
+          DISTRIBUTION_ID="${{ steps.get-distribution.outputs.distribution_id }}"
+          INVALIDATION_ID="${{ steps.invalidate.outputs.invalidation_id }}"
+
+          echo "⏳ Waiting for invalidation to complete..."
+          echo "This may take 5-15 minutes..."
+
+          # Check status periodically (don't wait for completion to avoid timeout)
+          STATUS=$(aws cloudfront get-invalidation \
+            --distribution-id $DISTRIBUTION_ID \
+            --id $INVALIDATION_ID \
+            --query 'Invalidation.Status' \
+            --output text)
+
+          echo "Current status: $STATUS"
+
+          if [ "$STATUS" = "Completed" ]; then
+            echo "✅ Invalidation completed!"
+          else
+            echo "⏳ Invalidation in progress. Check CloudFront console for status."
+          fi
+
+      - name: Invalidation Summary
+        run: |
+          echo "## 🔄 Cache Invalidation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Distribution ID:** ${{ steps.get-distribution.outputs.distribution_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Invalidation ID:** ${{ steps.invalidate.outputs.invalidation_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Paths:** ${{ github.event.inputs.paths || '/*' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Check Status" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "aws cloudfront get-invalidation \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --distribution-id ${{ steps.get-distribution.outputs.distribution_id }} \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --id ${{ steps.invalidate.outputs.invalidation_id }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "✅ Cache invalidation initiated successfully!"
+          echo "🔗 Invalidation ID: ${{ steps.invalidate.outputs.invalidation_id }}"

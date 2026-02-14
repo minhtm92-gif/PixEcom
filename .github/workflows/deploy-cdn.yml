@@ -1,0 +1,158 @@
+name: Deploy AWS CDN
+
+on:
+  push:
+    branches:
+      - main
+      - production
+    paths:
+      - 'infrastructure/cdk/**'
+      - '.github/workflows/deploy-cdn.yml'
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      invalidate_cache:
+        description: 'Invalidate CloudFront cache after deployment'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '18'
+
+jobs:
+  deploy-cdn:
+    name: Deploy CloudFront CDN
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: infrastructure/cdk/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS credentials
+        run: |
+          aws sts get-caller-identity
+          echo "AWS Account ID: $(aws sts get-caller-identity --query Account --output text)"
+
+      - name: Install CDK dependencies
+        working-directory: infrastructure/cdk
+        run: npm ci
+
+      - name: Build CDK project
+        working-directory: infrastructure/cdk
+        run: npm run build
+
+      - name: CDK Bootstrap (if needed)
+        working-directory: infrastructure/cdk
+        run: |
+          npx cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }} || echo "Already bootstrapped"
+
+      - name: CDK Synth
+        working-directory: infrastructure/cdk
+        run: npm run synth
+
+      - name: CDK Diff
+        working-directory: infrastructure/cdk
+        run: npm run diff || true
+
+      - name: Deploy CDN Stack
+        working-directory: infrastructure/cdk
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          ORIGIN_DOMAIN: ${{ secrets.ORIGIN_DOMAIN }}
+          API_ORIGIN_DOMAIN: ${{ secrets.API_ORIGIN_DOMAIN }}
+          ENVIRONMENT: ${{ github.event.inputs.environment || 'production' }}
+          PRICE_CLASS: ${{ secrets.PRICE_CLASS || 'PriceClass_100' }}
+          ENABLE_WAF: ${{ secrets.ENABLE_WAF || 'true' }}
+          ENABLE_ACCESS_LOGS: ${{ secrets.ENABLE_ACCESS_LOGS || 'true' }}
+          DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
+          CERTIFICATE_ARN: ${{ secrets.CERTIFICATE_ARN }}
+        run: |
+          npm run deploy:cdn -- --require-approval never
+
+      - name: Get CloudFront Distribution ID
+        id: get-distribution-id
+        run: |
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name pixecom-cdn-${{ github.event.inputs.environment || 'production' }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' \
+            --output text)
+          echo "distribution_id=$DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "CloudFront Distribution ID: $DISTRIBUTION_ID"
+
+      - name: Get CloudFront Domain Name
+        id: get-domain-name
+        run: |
+          DOMAIN_NAME=$(aws cloudformation describe-stacks \
+            --stack-name pixecom-cdn-${{ github.event.inputs.environment || 'production' }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`DistributionDomainName`].OutputValue' \
+            --output text)
+          echo "domain_name=$DOMAIN_NAME" >> $GITHUB_OUTPUT
+          echo "CloudFront Domain: $DOMAIN_NAME"
+
+      - name: Invalidate CloudFront Cache
+        if: ${{ github.event.inputs.invalidate_cache == 'true' || github.event.inputs.invalidate_cache == '' }}
+        run: |
+          echo "Creating cache invalidation for distribution: ${{ steps.get-distribution-id.outputs.distribution_id }}"
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.get-distribution-id.outputs.distribution_id }} \
+            --paths "/*" \
+            --query 'Invalidation.Id' \
+            --output text)
+          echo "Invalidation ID: $INVALIDATION_ID"
+          echo "Waiting for invalidation to complete..."
+          aws cloudfront wait invalidation-completed \
+            --distribution-id ${{ steps.get-distribution-id.outputs.distribution_id }} \
+            --id $INVALIDATION_ID || echo "Invalidation in progress (may take 5-15 minutes)"
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 CDN Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Distribution ID:** ${{ steps.get-distribution-id.outputs.distribution_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Domain:** https://${{ steps.get-domain-name.outputs.domain_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Stack Outputs" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          aws cloudformation describe-stacks \
+            --stack-name pixecom-cdn-${{ github.event.inputs.environment || 'production' }} \
+            --query 'Stacks[0].Outputs' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ CDN deployment completed successfully!"
+          echo "🌍 Your CDN is now available at: https://${{ steps.get-domain-name.outputs.domain_name }}"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ CDN deployment failed. Check the logs above for details."
+          exit 1

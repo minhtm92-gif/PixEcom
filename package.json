@@ -1,0 +1,27 @@
+{
+  "name": "pixecom",
+  "version": "2.0.0",
+  "private": true,
+  "description": "OnePage OneProduct Store Builder System",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:generate": "dotenv -- pnpm --filter api prisma generate",
+    "db:migrate": "dotenv -- pnpm --filter api prisma migrate dev",
+    "db:push": "dotenv -- pnpm --filter api prisma db push",
+    "db:seed": "dotenv -- pnpm --filter api prisma db seed",
+    "db:studio": "dotenv -- pnpm --filter api prisma studio",
+    "deploy:cloudflare": "cd apps/web && pnpm build && wrangler pages deploy .next --project-name=pixecom-web",
+    "deploy:preview": "cd apps/web && pnpm build && wrangler pages deploy .next --project-name=pixecom-web --branch=preview"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^7.4.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

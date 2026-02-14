@@ -1,0 +1,8 @@
+# Cloudflare Pages Redirects
+# https://developers.cloudflare.com/pages/configuration/redirects/
+
+# Redirect www to non-www (or vice versa, depending on preference)
+# https://www.pixecom.com/* https://pixecom.com/:splat 301
+
+# SPA fallback - redirect all non-asset requests to Next.js
+/* /index.html 200

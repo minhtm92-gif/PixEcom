@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/YOUR_USERNAME/PixEcom/blob/main/README.md
+    about: Read the documentation for setup and usage guides
+  - name: Discussions
+    url: https://github.com/YOUR_USERNAME/PixEcom/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: Security Issue
+    url: https://github.com/YOUR_USERNAME/PixEcom/security/advisories/new
+    about: Report security vulnerabilities privately

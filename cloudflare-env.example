@@ -1,0 +1,28 @@
+# Cloudflare Environment Variables
+
+# Frontend (Cloudflare Pages)
+NEXT_PUBLIC_API_URL=https://api.yourdomain.com
+
+# Backend (Railway/VPS)
+DATABASE_URL=postgresql://user:password@host:5432/pixecom?sslmode=require
+JWT_SECRET=your-super-secret-jwt-key-min-32-chars
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-min-32-chars
+ENCRYPTION_KEY=12345678901234567890123456789012
+NODE_ENV=production
+PORT=3001
+FRONTEND_URL=https://yourdomain.com
+
+# Stripe (if using)
+STRIPE_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+
+# Email (optional)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+
+# Cloudflare API (for automation)
+CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+CLOUDFLARE_ZONE_ID=your-zone-id
