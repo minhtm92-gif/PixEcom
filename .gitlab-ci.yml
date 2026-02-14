@@ -234,8 +234,6 @@ deploy_railway_backend:
       fi
   script:
     - echo "🚀 Deploying backend to Railway..."
-    - echo "Project ID: $RAILWAY_PROJECT_ID"
-    - echo "Service ID: $RAILWAY_SERVICE_ID"
     - cd apps/api
     - railway link $RAILWAY_PROJECT_ID
     - railway up --service $RAILWAY_SERVICE_ID
