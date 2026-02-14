@@ -321,7 +321,7 @@ migration_check:
 
 # Performance check for frontend
 lighthouse_audit:
-  stage: test
+  stage: .post
   image: cypress/browsers:node20.11.0-chrome121.0.6167.85-1-ff120.0-edge121.0.2277.83-1
   needs: [build_frontend]
   before_script:
