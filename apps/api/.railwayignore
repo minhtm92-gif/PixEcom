@@ -1,0 +1,40 @@
+# Development files
+node_modules/
+.env
+.env.local
+.env.*.local
+
+# Build artifacts (will be rebuilt by Railway)
+dist/
+
+# Git
+.git/
+.github/
+
+# Testing
+coverage/
+*.test.ts
+*.spec.ts
+test/
+
+# Documentation
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Prisma
+prisma/migrations/*.sql
+!prisma/schema.prisma

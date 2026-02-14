@@ -214,9 +214,12 @@ migrate_database:
 
 deploy_railway_backend:
   stage: deploy
-  needs: [migrate_database]
+  needs:
+    - job: build_backend
+      artifacts: true
+    - migrate_database
   before_script:
-    - npm install -g @railway/cli@${RAILWAY_VERSION}
+    - npm install -g @railway/cli@${RAILWAY_VERSION} pnpm@${PNPM_VERSION}
     - |
       if [ -z "$RAILWAY_TOKEN" ]; then
         echo "❌ ERROR: RAILWAY_TOKEN not set"
@@ -235,10 +238,21 @@ deploy_railway_backend:
   script:
     - echo "🚀 Deploying backend service to Railway..."
     - cd apps/api
-    - echo "Service name 'backend' | Service ID ae6dc82f-8a62-4d00-8482-c05175045f69"
-    - railway up --service=$RAILWAY_SERVICE_ID
-    - echo "✅ Backend deployment completed successfully"
+    - echo "📦 Verifying build artifacts..."
+    - ls -la dist/
+    - echo "🔧 Service 'backend' | ID $RAILWAY_SERVICE_ID"
+    - echo "🌐 Project ID $RAILWAY_PROJECT_ID"
+    - |
+      echo "🚂 Uploading to Railway..."
+      railway up --service=$RAILWAY_SERVICE_ID --detach || {
+        echo "❌ Railway deployment failed with exit code $?"
+        echo "📋 Checking Railway status..."
+        railway status || echo "Status check failed"
+        exit 1
+      }
+    - echo "✅ Backend deployment initiated successfully"
     - echo "📍 Check Railway dashboard for deployment status"
+    - echo "🔗 https://railway.app/project/$RAILWAY_PROJECT_ID"
   environment:
     name: production-backend
   rules:
