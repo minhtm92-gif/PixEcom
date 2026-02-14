@@ -235,8 +235,8 @@ deploy_railway_backend:
   script:
     - echo "🚀 Deploying backend to Railway..."
     - cd apps/api
-    - railway link $RAILWAY_PROJECT_ID
-    - railway up --service $RAILWAY_SERVICE_ID
+    - railway link --project=$RAILWAY_PROJECT_ID --service=$RAILWAY_SERVICE_ID
+    - railway up
     - echo "✅ Backend deployment completed successfully"
     - echo "📍 Check Railway dashboard for deployment status"
   environment:
