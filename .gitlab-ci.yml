@@ -251,22 +251,20 @@ deploy_cloudflare_production:
 
 deploy_cloudflare_preview:
   stage: deploy
-  needs: [build]
-  image: node:20
+  needs: [build_frontend]
+  image: node:20-alpine
   before_script:
     - npm install -g wrangler pnpm@${PNPM_VERSION}
   script:
-    - echo "Deploying to Cloudflare Pages (Preview)..."
+    - echo "🚀 Deploying to Cloudflare Pages (Preview)..."
     - cd apps/web
     - wrangler pages deploy .next --project-name=pixecom-web --branch=preview
-    - echo "Preview deployment completed successfully"
+    - echo "✅ Preview deployment completed successfully"
   environment:
     name: preview
     url: https://preview.pixecom-web.pages.dev
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
-  only:
-    - develop
 
 ###################
 # OPTIONAL JOBS
