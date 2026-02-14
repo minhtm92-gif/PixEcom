@@ -30,15 +30,15 @@ echo "📦 Project: $RAILWAY_PROJECT_ID"
 echo "🔧 Service: $RAILWAY_SERVICE_ID"
 echo "🌍 Environment: $RAILWAY_ENVIRONMENT_ID"
 
-# Create deployment using Railway GraphQL API
+# Create deployment using Railway GraphQL API v2
 echo ""
 echo "🚂 Triggering deployment via Railway API..."
 
-RESPONSE=$(curl -s -X POST "https://backboard.railway.app/graphql" \
+RESPONSE=$(curl -s -X POST "https://backboard.railway.com/graphql/v2" \
   -H "Authorization: Bearer $RAILWAY_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-    \"query\": \"mutation deploymentTrigger(\$serviceId: String!, \$environmentId: String!) { deploymentTrigger(input: { serviceId: \$serviceId, environmentId: \$environmentId }) { id status } }\",
+    \"query\": \"mutation serviceInstanceRedeploy(\$serviceId: String!, \$environmentId: String!) { serviceInstanceRedeploy(serviceId: \$serviceId, environmentId: \$environmentId) }\",
     \"variables\": {
       \"serviceId\": \"$RAILWAY_SERVICE_ID\",
       \"environmentId\": \"$RAILWAY_ENVIRONMENT_ID\"
@@ -49,11 +49,11 @@ echo "📡 API Response:"
 echo "$RESPONSE" | jq '.' || echo "$RESPONSE"
 
 # Check if deployment was triggered successfully
-if echo "$RESPONSE" | jq -e '.data.deploymentTrigger.id' > /dev/null 2>&1; then
-  DEPLOYMENT_ID=$(echo "$RESPONSE" | jq -r '.data.deploymentTrigger.id')
+if echo "$RESPONSE" | jq -e '.data.serviceInstanceRedeploy' > /dev/null 2>&1; then
+  RESULT=$(echo "$RESPONSE" | jq -r '.data.serviceInstanceRedeploy')
   echo ""
   echo "✅ Deployment triggered successfully!"
-  echo "🆔 Deployment ID: $DEPLOYMENT_ID"
+  echo "🔄 Redeployment result: $RESULT"
   echo "🔗 View deployment: https://railway.app/project/$RAILWAY_PROJECT_ID/service/$RAILWAY_SERVICE_ID"
   echo ""
   echo "⏳ Railway is now building and deploying your backend..."

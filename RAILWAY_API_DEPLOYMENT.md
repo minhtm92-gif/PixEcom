@@ -43,15 +43,14 @@ API live at backend-production-46ad.up.railway.app
 
 ### GraphQL API Call:
 
+**Endpoint:** `https://backboard.railway.com/graphql/v2`
+
 ```graphql
-mutation deploymentTrigger($serviceId: String!, $environmentId: String!) {
-  deploymentTrigger(input: {
+mutation serviceInstanceRedeploy($serviceId: String!, $environmentId: String!) {
+  serviceInstanceRedeploy(
     serviceId: $serviceId,
     environmentId: $environmentId
-  }) {
-    id
-    status
-  }
+  )
 }
 ```
 
