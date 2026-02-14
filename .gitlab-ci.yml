@@ -222,10 +222,23 @@ deploy_railway_backend:
         echo "❌ ERROR: RAILWAY_TOKEN not set"
         exit 1
       fi
+    - |
+      if [ -z "$RAILWAY_PROJECT_ID" ]; then
+        echo "❌ ERROR: RAILWAY_PROJECT_ID not set"
+        exit 1
+      fi
+    - |
+      if [ -z "$RAILWAY_SERVICE_ID" ]; then
+        echo "❌ ERROR: RAILWAY_SERVICE_ID not set"
+        exit 1
+      fi
   script:
     - echo "🚀 Deploying backend to Railway..."
+    - echo "Project ID: $RAILWAY_PROJECT_ID"
+    - echo "Service ID: $RAILWAY_SERVICE_ID"
     - cd apps/api
-    - railway up
+    - railway link $RAILWAY_PROJECT_ID
+    - railway up --service $RAILWAY_SERVICE_ID
     - echo "✅ Backend deployment completed successfully"
     - echo "📍 Check Railway dashboard for deployment status"
   environment:
