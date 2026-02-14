@@ -233,8 +233,9 @@ deploy_railway_backend:
         exit 1
       fi
   script:
-    - echo "🚀 Deploying backend to Railway..."
+    - echo "🚀 Deploying backend service to Railway..."
     - cd apps/api
+    - echo "Service name 'backend' | Service ID ae6dc82f-8a62-4d00-8482-c05175045f69"
     - railway up --service=$RAILWAY_SERVICE_ID
     - echo "✅ Backend deployment completed successfully"
     - echo "📍 Check Railway dashboard for deployment status"
