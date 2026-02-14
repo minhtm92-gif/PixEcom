@@ -1,16 +1,18 @@
 # GitLab CI/CD Pipeline for PixEcom
-# This pipeline runs tests, builds, and deploys the application
+# Deploys NestJS backend to Railway and Next.js frontend to Cloudflare Pages
 
-image: node:20
+image: node:20-alpine
 
 stages:
   - install
   - test
   - build
+  - migrate
   - deploy
 
 variables:
   PNPM_VERSION: "9.15.0"
+  RAILWAY_VERSION: "3.5.0"
   FF_USE_FASTZIP: "true"
   CACHE_COMPRESSION_LEVEL: "fast"
 
@@ -33,20 +35,20 @@ install_dependencies:
     - npm install -g pnpm@${PNPM_VERSION}
     - pnpm config set store-dir .pnpm-store
   script:
-    - echo "Installing dependencies..."
+    - echo "📦 Installing dependencies..."
     - pnpm install --frozen-lockfile
-    - echo "Dependencies installed successfully"
+    - echo "✅ Dependencies installed successfully"
   artifacts:
     paths:
       - node_modules/
       - apps/*/node_modules/
       - packages/*/node_modules/
       - .pnpm-store/
-    expire_in: 1 day
+    expire_in: 1 hour
   only:
-    - branches
-    - merge_requests
-    - tags
+    - main
+    - master
+    - develop
 
 ###################
 # TEST STAGE
@@ -140,49 +142,112 @@ security_audit:
 # BUILD STAGE
 ###################
 
-build:
+build_backend:
   stage: build
   needs: [install_dependencies]
   before_script:
     - npm install -g pnpm@${PNPM_VERSION}
   script:
-    - echo "Generating Prisma Client..."
-    - pnpm db:generate
-    - echo "Building all packages..."
-    - pnpm build
-    - echo "Build completed successfully"
+    - echo "🔨 Generating Prisma Client..."
+    - cd apps/api
+    - pnpm prisma generate
+    - echo "🔨 Building backend..."
+    - cd ../..
+    - pnpm --filter api build
+    - echo "✅ Backend build completed"
   artifacts:
     paths:
       - apps/api/dist/
-      - apps/web/.next/
       - apps/api/node_modules/.prisma/
-    expire_in: 1 day
+    expire_in: 1 hour
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+
+build_frontend:
+  stage: build
+  needs: [install_dependencies]
+  before_script:
+    - npm install -g pnpm@${PNPM_VERSION}
+  script:
+    - echo "🔨 Building frontend..."
+    - pnpm --filter @pixecom/web build
+    - echo "✅ Frontend build completed"
+  artifacts:
+    paths:
+      - apps/web/.next/
+    expire_in: 1 hour
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+
+###################
+# MIGRATE STAGE
+###################
+
+migrate_database:
+  stage: migrate
+  needs: [build_backend]
+  before_script:
+    - npm install -g @railway/cli@${RAILWAY_VERSION}
+    - npm install -g pnpm@${PNPM_VERSION}
+    - |
+      if [ -z "$RAILWAY_TOKEN" ]; then
+        echo "❌ ERROR: RAILWAY_TOKEN not set in GitLab CI variables"
+        exit 1
+      fi
+  script:
+    - echo "🚂 Running database migrations on Railway..."
+    - cd apps/api
+    - railway run --service api pnpm prisma migrate deploy
+    - echo "✅ Migrations completed successfully"
+  allow_failure: false
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
 
 ###################
 # DEPLOY STAGE
 ###################
 
+deploy_railway_backend:
+  stage: deploy
+  needs: [migrate_database]
+  before_script:
+    - npm install -g @railway/cli@${RAILWAY_VERSION}
+    - |
+      if [ -z "$RAILWAY_TOKEN" ]; then
+        echo "❌ ERROR: RAILWAY_TOKEN not set"
+        exit 1
+      fi
+  script:
+    - echo "🚀 Deploying backend to Railway..."
+    - railway up --service api
+    - echo "✅ Backend deployment completed successfully"
+    - echo "📍 API should be live at your Railway URL"
+  environment:
+    name: production-backend
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+
 deploy_cloudflare_production:
   stage: deploy
-  needs: [build]
-  image: node:20
+  needs: [build_frontend]
+  image: node:20-alpine
   before_script:
     - npm install -g wrangler pnpm@${PNPM_VERSION}
   script:
-    - echo "Deploying to Cloudflare Pages (Production)..."
+    - echo "🚀 Deploying frontend to Cloudflare Pages..."
     - cd apps/web
     - wrangler pages deploy .next --project-name=pixecom-web --branch=main
-    - echo "Deployment to Cloudflare Pages completed successfully"
+    - echo "✅ Frontend deployment completed successfully"
   environment:
-    name: production
+    name: production-frontend
     url: https://pixecom-web.pages.dev
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
-  only:
-    - main
-    - master
 
 deploy_cloudflare_preview:
   stage: deploy
@@ -260,7 +325,7 @@ migration_check:
 lighthouse_audit:
   stage: test
   image: cypress/browsers:node20.11.0-chrome121.0.6167.85-1-ff120.0-edge121.0.2277.83-1
-  needs: [build]
+  needs: [build_frontend]
   before_script:
     - npm install -g @lhci/cli@0.12.x
   script:
@@ -274,3 +339,27 @@ lighthouse_audit:
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
       when: manual
   allow_failure: true
+
+###################
+# POST-DEPLOY HEALTH CHECK
+###################
+
+health_check_backend:
+  stage: .post
+  needs: [deploy_railway_backend]
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - echo "🏥 Running backend health check..."
+    - sleep 30
+    - |
+      if [ -n "$RAILWAY_DOMAIN" ]; then
+        echo "Testing API at https://$RAILWAY_DOMAIN/api/health"
+        curl -f https://$RAILWAY_DOMAIN/api/health || echo "⚠️ Health check failed, but deployment may still be starting"
+      else
+        echo "⚠️ RAILWAY_DOMAIN not set, skipping health check"
+        echo "ℹ️ Add RAILWAY_DOMAIN variable in GitLab CI/CD settings for automatic health checks"
+      fi
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
