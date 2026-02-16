@@ -336,7 +336,7 @@ export default function EditProductPage() {
       const payload: Record<string, unknown> = {
         name: displayName,
         options: optionsObj,
-        stock: parseInt(newVariantStock, 10) || 0,
+        stockQuantity: parseInt(newVariantStock, 10) || 0,
       };
       if (newVariantSku.trim()) payload.sku = newVariantSku.trim();
       if (newVariantPrice) payload.priceOverride = parseFloat(newVariantPrice);
@@ -378,7 +378,7 @@ export default function EditProductPage() {
     try {
       const payload: Record<string, unknown> = {
         name: editVariantName.trim(),
-        stock: parseInt(editVariantStock, 10) || 0,
+        stockQuantity: parseInt(editVariantStock, 10) || 0,
       };
       payload.sku = editVariantSku.trim() || null;
       payload.priceOverride = editVariantPrice ? parseFloat(editVariantPrice) : null;
