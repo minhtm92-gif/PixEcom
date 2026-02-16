@@ -171,6 +171,7 @@ export function BulkImageUploader({
   const [media, setMedia] = useState<ProductMedia[]>(existingMedia);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Update media when existingMedia prop changes (after upload/delete)
   useEffect(() => {
@@ -190,6 +191,7 @@ export function BulkImageUploader({
 
       setUploading(true);
       setUploadError(null);
+      setUploadProgress(0);
 
       try {
         const formData = new FormData();
@@ -197,22 +199,39 @@ export function BulkImageUploader({
           formData.append('files', file);
         });
 
-        // Upload to API
+        // Upload to API with XMLHttpRequest for progress tracking
         const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
         const endpoint = API_BASE.endsWith('/api')
           ? `${API_BASE}/products/${productId}/media/bulk`
           : `${API_BASE}/api/products/${productId}/media/bulk`;
 
-        console.log('Upload endpoint:', endpoint);
-        console.log('Product ID:', productId);
+        const response = await new Promise<Response>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
 
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${getAccessToken()}`,
-            'X-Workspace-Id': getWorkspaceId() || '',
-          },
-          body: formData,
+          // Track upload progress
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const percentComplete = Math.round((e.loaded / e.total) * 100);
+              setUploadProgress(percentComplete);
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(new Response(xhr.response, { status: xhr.status }));
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          });
+
+          xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+          xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
+
+          xhr.open('POST', endpoint);
+          xhr.setRequestHeader('Authorization', `Bearer ${getAccessToken()}`);
+          xhr.setRequestHeader('X-Workspace-Id', getWorkspaceId() || '');
+          xhr.responseType = 'json';
+          xhr.send(formData);
         });
 
         if (!response.ok) {
@@ -221,11 +240,12 @@ export function BulkImageUploader({
         }
 
         const result = await response.json();
-        console.log('Upload response:', result);
 
         // Check if response is wrapped in TransformInterceptor format
         const mediaRecords = result.data || result;
-        console.log('Media records:', mediaRecords);
+
+        // Set progress to 100% when complete
+        setUploadProgress(100);
 
         // Don't update local state - let the parent refetch and update existingMedia
         // This ensures we get the full URL from the server
@@ -234,6 +254,8 @@ export function BulkImageUploader({
         setUploadError(error.message || 'Failed to upload images');
       } finally {
         setUploading(false);
+        // Reset progress after a short delay
+        setTimeout(() => setUploadProgress(0), 1000);
       }
     },
     [productId, media, onUploadComplete]
@@ -329,6 +351,22 @@ export function BulkImageUploader({
           )}
         </div>
       </div>
+
+      {/* Upload Progress Bar */}
+      {uploading && uploadProgress > 0 && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-blue-700">Uploading...</span>
+            <span className="text-sm text-blue-600">{uploadProgress}%</span>
+          </div>
+          <div className="w-full bg-blue-200 rounded-full h-2">
+            <div
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Error Message */}
       {uploadError && (
