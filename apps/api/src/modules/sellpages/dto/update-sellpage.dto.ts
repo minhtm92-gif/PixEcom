@@ -58,7 +58,7 @@ export class UpdateSellpageDto {
 
   @ApiPropertyOptional({ example: 'https://cdn.example.com/og-image.jpg' })
   @IsOptional()
-  @IsUrl()
+  @IsString()
   seoOgImage?: string;
 
   @ApiPropertyOptional({ description: 'Header configuration' })
