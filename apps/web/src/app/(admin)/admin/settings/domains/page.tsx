@@ -80,7 +80,7 @@ export default function DomainsPage() {
     }
 
     try {
-      await apiClient.post(`/stores/${selectedStoreId}/domains/${domainId}/check`, {});
+      await apiClient.post(`/stores/${selectedStoreId}/domains/${domainId}/verify`, {});
       await loadDomains(selectedStoreId);
     } catch (error) {
       console.error('Failed to verify domain:', error);
