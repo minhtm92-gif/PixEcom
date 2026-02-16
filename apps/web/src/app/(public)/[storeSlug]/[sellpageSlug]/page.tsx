@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { SectionRenderer } from '@/components/sellpage/SectionRenderer';
+import { TrackingProvider } from '@/components/tracking/TrackingProvider';
 
 interface PageProps {
   params: {
@@ -41,14 +42,24 @@ export default async function PublicSellpagePage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Render page sections */}
-      <SectionRenderer
-        sections={sellpage.sections || []}
-        product={product}
-        reviews={reviews}
-        isPreview={false}
+    <>
+      {/* Tracking Pixels */}
+      <TrackingProvider
+        facebookPixelId={sellpage.facebookPixelId}
+        tiktokPixelId={sellpage.tiktokPixelId}
+        googleAnalyticsId={sellpage.googleAnalyticsId}
+        googleTagManagerId={sellpage.googleTagManagerId}
       />
-    </div>
+
+      <div className="min-h-screen bg-white">
+        {/* Render page sections */}
+        <SectionRenderer
+          sections={sellpage.sections || []}
+          product={product}
+          reviews={reviews}
+          isPreview={false}
+        />
+      </div>
+    </>
   );
 }
