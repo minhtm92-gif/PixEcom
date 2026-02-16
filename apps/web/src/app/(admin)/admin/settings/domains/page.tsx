@@ -405,6 +405,23 @@ export default function DomainsPage() {
               >
                 Close
               </button>
+              <button
+                onClick={async () => {
+                  if (selectedDomain) {
+                    await handleVerifyDomain(selectedDomain.id);
+                    // Refresh the selected domain data
+                    const refreshedDomains = await apiClient.get<Domain[]>(`/stores/${selectedStoreId}/domains`);
+                    const refreshedDomain = refreshedDomains.find(d => d.id === selectedDomain.id);
+                    if (refreshedDomain) {
+                      setSelectedDomain(refreshedDomain);
+                    }
+                  }
+                }}
+                disabled={!selectedStoreId}
+                className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Check Verification
+              </button>
             </div>
           </div>
         </div>
