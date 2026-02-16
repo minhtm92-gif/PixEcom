@@ -188,6 +188,40 @@ export class DomainsService {
   }
 
   /**
+   * Find a verified domain by hostname (public method - no auth required)
+   * Used for custom domain routing
+   */
+  async findByHostname(hostname: string) {
+    const domain = await this.prisma.storeDomain.findFirst({
+      where: {
+        hostname,
+        status: DomainStatus.VERIFIED,
+        isActive: true,
+      },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            primaryDomain: true,
+          },
+        },
+      },
+    });
+
+    if (!domain) {
+      throw new NotFoundException('Domain not found or not verified');
+    }
+
+    return {
+      domain: domain.hostname,
+      isPrimary: domain.isPrimary,
+      store: domain.store,
+    };
+  }
+
+  /**
    * Get verification instructions for a domain
    */
   private getVerificationInstructions(domain: any) {

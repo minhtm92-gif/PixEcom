@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DomainsService } from './domains.service';
 import { DomainsController } from './domains.controller';
+import { DomainsPublicController } from './domains-public.controller';
 import { DomainsVerificationService } from './domains-verification.service';
 import { DomainsJob } from './domains.job';
 import { PrismaModule } from '../../prisma/prisma.module';
@@ -11,7 +12,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
     PrismaModule,
     ScheduleModule.forRoot(), // Enable cron jobs
   ],
-  controllers: [DomainsController],
+  controllers: [DomainsController, DomainsPublicController],
   providers: [DomainsService, DomainsVerificationService, DomainsJob],
   exports: [DomainsService, DomainsVerificationService],
 })
