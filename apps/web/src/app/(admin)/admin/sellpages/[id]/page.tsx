@@ -38,7 +38,7 @@ interface SellpageData {
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   storeId: string;
   productId: string;
-  store?: { id: string; name: string };
+  store?: { id: string; name: string; slug: string; primaryDomain: string };
   product?: { id: string; name: string; basePrice?: number; media?: any[] };
   storeName?: string;
   productName?: string;

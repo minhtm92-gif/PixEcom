@@ -1,0 +1,63 @@
+  // ── Register ──────────────────────────────────────
+
+  async register(dto: RegisterDto, res: Response) {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email.toLowerCase() },
+    });
+
+    if (existing) {
+      throw new ConflictException('A user with this email already exists');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+
+    // Determine display name
+    const displayName = dto.displayName || `${dto.firstName || ''} ${dto.lastName || ''}`.trim() || dto.email.split('@')[0];
+
+    // Create user and default workspace in a transaction
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: dto.email.toLowerCase(),
+          passwordHash,
+          displayName,
+        },
+      });
+
+      // Auto-create first workspace for new user
+      const workspaceName = `${user.displayName}'s Workspace`;
+      const workspaceSlug = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-') + '-workspace';
+
+      const workspace = await tx.workspace.create({
+        data: {
+          name: workspaceName,
+          slug: workspaceSlug,
+        },
+      });
+
+      // Add user as owner
+      await tx.membership.create({
+        data: {
+          userId: user.id,
+          workspaceId: workspace.id,
+          role: 'OWNER',
+          isActive: true,
+        },
+      });
+
+      return { user, workspace };
+    });
+
+    const tokens = await this.generateTokens(result.user);
+    this.setRefreshCookie(res, tokens.refreshToken);
+
+    return {
+      accessToken: tokens.accessToken,
+      user: this.sanitizeUser(result.user),
+      workspace: {
+        id: result.workspace.id,
+        name: result.workspace.name,
+        slug: result.workspace.slug,
+      },
+    };
+  }

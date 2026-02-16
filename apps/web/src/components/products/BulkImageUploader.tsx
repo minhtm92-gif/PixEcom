@@ -203,6 +203,9 @@ export function BulkImageUploader({
           ? `${API_BASE}/products/${productId}/media/bulk`
           : `${API_BASE}/api/products/${productId}/media/bulk`;
 
+        console.log('Upload endpoint:', endpoint);
+        console.log('Product ID:', productId);
+
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: {

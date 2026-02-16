@@ -44,7 +44,7 @@ export default function EditLegalPolicyPage() {
 
   const loadPolicy = async () => {
     try {
-      const data = await apiClient.get(`/legal-policies/${params.id}`);
+      const data = await apiClient.get<any>(`/legal-policies/${params.id}`);
       setFormData({
         title: data.title,
         slug: data.slug,
@@ -82,7 +82,7 @@ export default function EditLegalPolicyPage() {
       if (isNew) {
         await apiClient.post('/legal-policies', {
           ...formData,
-          workspaceId: workspace.id,
+          workspaceId: workspace?.id,
         });
         success('Policy created successfully');
       } else {
@@ -138,8 +138,8 @@ export default function EditLegalPolicyPage() {
           </label>
           <Select
             value={formData.policyType}
-            onChange={(value) =>
-              setFormData({ ...formData, policyType: value })
+            onChange={(e) =>
+              setFormData({ ...formData, policyType: e.target.value })
             }
             options={POLICY_TYPES}
           />

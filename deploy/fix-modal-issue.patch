@@ -1,0 +1,14 @@
+--- a/apps/web/src/components/builders/SectionListPanel.tsx
++++ b/apps/web/src/components/builders/SectionListPanel.tsx
+@@ -119,7 +119,10 @@ export function SectionListPanel({ sectionTypes }: SectionListPanelProps) {
+             size="sm"
+             className="w-full"
+             leftIcon={<Plus className="h-4 w-4" />}
+-            onClick={() => setAddModalOpen(true)}
++            onClick={(e) => {
++              e.stopPropagation();
++              setAddModalOpen(true);
++            }}
+           >
+             Add Section
+           </Button>

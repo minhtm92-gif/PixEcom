@@ -109,7 +109,7 @@ export default function SellpagesPage() {
   async function handleDuplicate(sellpage: SellpageItem, e: React.MouseEvent) {
     e.stopPropagation();
     try {
-      const duplicated = await apiClient.post(`/sellpages/${sellpage.id}/duplicate`);
+      const duplicated = await apiClient.post<{ id: string }>(`/sellpages/${sellpage.id}/duplicate`);
       await fetchSellpages();
       router.push(`/admin/sellpages/${duplicated.id}`);
     } catch (err) {
