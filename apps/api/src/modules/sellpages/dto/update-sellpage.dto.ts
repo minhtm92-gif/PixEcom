@@ -96,9 +96,6 @@ export class UpdateSellpageDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  @Matches(/^\d{15,16}$/, {
-    message: 'Facebook Pixel ID must be 15-16 digits',
-  })
   facebookPixelId?: string;
 
   @ApiPropertyOptional({ example: 'ABC123DEF456' })
@@ -111,17 +108,11 @@ export class UpdateSellpageDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  @Matches(/^G-[A-Z0-9]+$/, {
-    message: 'Google Analytics ID must start with G- followed by alphanumeric characters',
-  })
   googleAnalyticsId?: string;
 
   @ApiPropertyOptional({ example: 'GTM-XXXXXX' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  @Matches(/^GTM-[A-Z0-9]+$/, {
-    message: 'Google Tag Manager ID must start with GTM- followed by alphanumeric characters',
-  })
   googleTagManagerId?: string;
 }
