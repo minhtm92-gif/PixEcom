@@ -959,8 +959,14 @@ export default function EditProductPage() {
                   onUploadComplete={() => fetchProduct()}
                   onReorder={async (mediaIds) => {
                     try {
+                      // Save scroll position before refetching
+                      const scrollY = window.scrollY;
                       await apiClient.put(`/products/${productId}/media/reorder`, { mediaIds });
                       await fetchProduct();
+                      // Restore scroll position after refetch
+                      requestAnimationFrame(() => {
+                        window.scrollTo(0, scrollY);
+                      });
                     } catch (error) {
                       console.error('Failed to reorder media:', error);
                     }
