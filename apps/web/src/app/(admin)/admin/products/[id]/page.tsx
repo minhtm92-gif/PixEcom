@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -156,6 +156,10 @@ export default function EditProductPage() {
   const router = useRouter();
   const productId = params.id as string;
 
+  // Scroll position preservation
+  const scrollPositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const shouldPreserveScrollRef = useRef(false);
+
   // Product data
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -237,6 +241,27 @@ export default function EditProductPage() {
   useEffect(() => {
     fetchProduct();
   }, [fetchProduct]);
+
+  // Restore scroll position after product updates
+  useEffect(() => {
+    if (shouldPreserveScrollRef.current && product) {
+      const { x, y } = scrollPositionRef.current;
+
+      // Try multiple times to ensure scroll is restored
+      window.scrollTo(x, y);
+
+      requestAnimationFrame(() => {
+        window.scrollTo(x, y);
+      });
+
+      const timer = setTimeout(() => {
+        window.scrollTo(x, y);
+        shouldPreserveScrollRef.current = false;
+      }, 50);
+
+      return () => clearTimeout(timer);
+    }
+  }, [product]);
 
   // Clear success message after delay
   useEffect(() => {
@@ -959,16 +984,37 @@ export default function EditProductPage() {
                   onUploadComplete={() => fetchProduct()}
                   onReorder={async (mediaIds) => {
                     try {
-                      // Save scroll position before refetching
-                      const scrollY = window.scrollY;
+                      // Save scroll position to ref
+                      scrollPositionRef.current = {
+                        x: window.scrollX,
+                        y: window.scrollY
+                      };
+                      shouldPreserveScrollRef.current = true;
+
+                      // Call API to save order
                       await apiClient.put(`/products/${productId}/media/reorder`, { mediaIds });
-                      await fetchProduct();
-                      // Restore scroll position after refetch
-                      requestAnimationFrame(() => {
-                        window.scrollTo(0, scrollY);
-                      });
+
+                      // Update product state without full refetch to avoid delay
+                      if (product) {
+                        const reorderedMedia = mediaIds.map((id, index) => {
+                          const media = product.media.find(m => m.id === id);
+                          return media ? { ...media, position: index } : null;
+                        }).filter(Boolean);
+
+                        setProduct({
+                          ...product,
+                          media: reorderedMedia as typeof product.media
+                        });
+                      }
+
+                      // Immediately restore scroll position
+                      const { x, y } = scrollPositionRef.current;
+                      window.scrollTo(x, y);
                     } catch (error) {
                       console.error('Failed to reorder media:', error);
+                      shouldPreserveScrollRef.current = false;
+                      // On error, refetch to get correct state
+                      await fetchProduct();
                     }
                   }}
                   onDelete={async (mediaId) => {
