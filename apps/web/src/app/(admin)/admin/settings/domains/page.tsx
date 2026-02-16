@@ -74,6 +74,11 @@ export default function DomainsPage() {
   }
 
   async function handleVerifyDomain(domainId: string) {
+    if (!selectedStoreId) {
+      alert('Please select a store first');
+      return;
+    }
+
     try {
       await apiClient.post(`/stores/${selectedStoreId}/domains/${domainId}/check`, {});
       await loadDomains(selectedStoreId);
@@ -84,6 +89,11 @@ export default function DomainsPage() {
   }
 
   async function handleSetPrimary(domainId: string) {
+    if (!selectedStoreId) {
+      alert('Please select a store first');
+      return;
+    }
+
     try {
       await apiClient.patch(`/stores/${selectedStoreId}/domains/${domainId}`, { isPrimary: true });
       await loadDomains(selectedStoreId);
@@ -94,6 +104,11 @@ export default function DomainsPage() {
   }
 
   async function handleDeleteDomain(domainId: string) {
+    if (!selectedStoreId) {
+      alert('Please select a store first');
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this domain?')) return;
 
     try {
@@ -250,7 +265,8 @@ export default function DomainsPage() {
                         </button>
                         <button
                           onClick={() => handleDeleteDomain(domain.id)}
-                          className="text-red-600 hover:text-red-700"
+                          disabled={!selectedStoreId}
+                          className="text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Delete domain"
                         >
                           <Trash2 className="w-4 h-4" />
