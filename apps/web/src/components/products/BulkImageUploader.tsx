@@ -96,6 +96,13 @@ function SortableImage({ media, onDelete }: SortableImageProps) {
       <div
         {...attributes}
         {...listeners}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
         className="absolute top-2 left-2 z-10 p-1 bg-white rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
       >
         <GripVertical className="w-4 h-4 text-gray-600" />
@@ -121,15 +128,15 @@ function SortableImage({ media, onDelete }: SortableImageProps) {
         </div>
       )}
 
-      {/* Media Type Badge */}
+      {/* Media Type Badge - positioned at bottom-right to avoid overlap with drag handle */}
       {isVideo && (
-        <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-purple-600 text-white text-xs font-medium rounded flex items-center gap-1">
+        <div className="absolute bottom-2 right-2 z-10 px-2 py-1 bg-purple-600 text-white text-xs font-medium rounded flex items-center gap-1">
           <Video className="w-3 h-3" />
           Video
         </div>
       )}
       {isGif && (
-        <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-green-600 text-white text-xs font-medium rounded flex items-center gap-1">
+        <div className="absolute bottom-2 right-2 z-10 px-2 py-1 bg-green-600 text-white text-xs font-medium rounded flex items-center gap-1">
           <Film className="w-3 h-3" />
           GIF
         </div>
@@ -276,6 +283,13 @@ export function BulkImageUploader({
     const { active, over } = event;
 
     if (!over || active.id === over.id) return;
+
+    // Prevent any default behavior and event bubbling
+    if (event.activatorEvent) {
+      const nativeEvent = event.activatorEvent as Event;
+      nativeEvent.preventDefault?.();
+      nativeEvent.stopPropagation?.();
+    }
 
     const oldIndex = media.findIndex((m) => m.id === active.id);
     const newIndex = media.findIndex((m) => m.id === over.id);
