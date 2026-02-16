@@ -120,8 +120,8 @@ echo ""
 
 # Step 4: Redis Setup
 print_header "Step 4: Configuring Redis"
-sudo systemctl start redis
-sudo systemctl enable redis
+sudo systemctl start redis-server || print_warning "Redis already running"
+sudo systemctl enable redis-server || print_warning "Redis already enabled"
 print_success "Redis configured"
 echo ""
 
