@@ -348,6 +348,7 @@ model Sellpage {
   slug                String         @db.VarChar(100)
   subdomain           String?        @db.VarChar(100)
   customDomain        String?        @map("custom_domain") @db.VarChar(255)
+  sellpageDomain      String?        @map("sellpage_domain") @db.VarChar(255)
   status              SellpageStatus @default(DRAFT)
   titleOverride       String?        @map("title_override") @db.VarChar(255)
   descriptionOverride String?        @map("description_override") @db.Text
@@ -359,6 +360,13 @@ model Sellpage {
   footerConfig        Json           @default("{}") @map("footer_config")
   boostModules        Json           @default("[]") @map("boost_modules")
   discountRules       Json           @default("[]") @map("discount_rules")
+
+  // Tracking pixels
+  facebookPixelId     String?        @map("facebook_pixel_id") @db.VarChar(100)
+  tiktokPixelId       String?        @map("tiktok_pixel_id") @db.VarChar(100)
+  googleAnalyticsId   String?        @map("google_analytics_id") @db.VarChar(100)
+  googleTagManagerId  String?        @map("google_tag_manager_id") @db.VarChar(100)
+
   assignedTo          String?        @map("assigned_to") @db.Uuid
   createdBy           String?        @map("created_by") @db.Uuid
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz

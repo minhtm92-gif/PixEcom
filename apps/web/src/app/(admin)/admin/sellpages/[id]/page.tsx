@@ -25,7 +25,6 @@ import {
 import { PreviewLinkModal } from '@/components/sellpages/PreviewLinkModal';
 import { TemplateSelectorModal } from '@/components/sellpages/TemplateSelectorModal';
 import { SellpageActions } from '@/components/sellpages/SellpageActions';
-import { UTMLinkGenerator } from '@/components/sellpages/UTMLinkGenerator';
 import { SellpageBuilder } from '@/components/sellpage/SellpageBuilder';
 import { SectionData } from '@/components/sellpage/SectionRenderer';
 import { SellpageTemplate } from '@/lib/templates';
@@ -73,7 +72,7 @@ export default function EditSellpagePage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [sellpage, setSellpage] = useState<SellpageData | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'design' | 'seo' | 'marketing'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'design' | 'seo' | 'tracking'>('details');
   const [pageSections, setPageSections] = useState<SectionData[]>([]);
   const [product, setProduct] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -88,6 +87,11 @@ export default function EditSellpagePage() {
     seoOgImage: '',
     logoUrl: '',
     faviconUrl: '',
+    sellpageDomain: '',
+    facebookPixelId: '',
+    tiktokPixelId: '',
+    googleAnalyticsId: '',
+    googleTagManagerId: '',
   });
 
   useEffect(() => {
@@ -111,6 +115,11 @@ export default function EditSellpagePage() {
         seoOgImage: data.seoOgImage || '',
         logoUrl: data.logoUrl || '',
         faviconUrl: data.faviconUrl || '',
+        sellpageDomain: (data as any).sellpageDomain || '',
+        facebookPixelId: (data as any).facebookPixelId || '',
+        tiktokPixelId: (data as any).tiktokPixelId || '',
+        googleAnalyticsId: (data as any).googleAnalyticsId || '',
+        googleTagManagerId: (data as any).googleTagManagerId || '',
       });
 
       // Fetch product and reviews if productId exists
@@ -403,7 +412,7 @@ export default function EditSellpagePage() {
           {[
             { id: 'details', label: 'Details' },
             { id: 'design', label: 'Page Design' },
-            { id: 'marketing', label: 'Marketing' },
+            { id: 'tracking', label: 'Tracking' },
             { id: 'seo', label: 'SEO' },
           ].map((tab) => (
             <button
@@ -449,6 +458,14 @@ export default function EditSellpagePage() {
                 error={fieldErrors.slug}
                 hint="URL path for this sellpage"
                 required
+              />
+              <Input
+                label="Sellpage Domain"
+                placeholder="offer.example.com"
+                value={form.sellpageDomain}
+                onChange={(e) => updateField('sellpageDomain', e.target.value)}
+                error={fieldErrors.sellpageDomain}
+                hint="Custom domain for this sellpage (optional)"
               />
               <Input
                 label="Title Override"
@@ -569,20 +586,95 @@ export default function EditSellpagePage() {
         </div>
       )}
 
-      {/* Tab Content: Marketing */}
-      {activeTab === 'marketing' && sellpage && (
-        <div className="max-w-4xl space-y-6">
-          {/* UTM Link Generator */}
-          <UTMLinkGenerator
-            baseUrl={
-              sellpage.store?.primaryDomain
-                ? `https://${sellpage.store.primaryDomain}/${sellpage.slug}`
-                : sellpage.store?.slug
-                ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${sellpage.store.slug}/${sellpage.slug}`
-                : `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/preview/${sellpage.id}`
-            }
-          />
-        </div>
+      {/* Tab Content: Tracking */}
+      {activeTab === 'tracking' && (
+        <form onSubmit={handleSave} className="max-w-2xl space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tracking Pixels</CardTitle>
+              <CardDescription>
+                Add tracking pixels to monitor conversions and optimize your marketing campaigns
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <Input
+                  label="Facebook Pixel ID"
+                  placeholder="1234567890123456"
+                  value={form.facebookPixelId}
+                  onChange={(e) => updateField('facebookPixelId', e.target.value)}
+                  error={fieldErrors.facebookPixelId}
+                  hint="15-16 digit numeric ID from Meta Events Manager"
+                />
+
+                <Input
+                  label="TikTok Pixel ID"
+                  placeholder="ABC123DEF456"
+                  value={form.tiktokPixelId}
+                  onChange={(e) => updateField('tiktokPixelId', e.target.value)}
+                  error={fieldErrors.tiktokPixelId}
+                  hint="Alphanumeric ID from TikTok Events Manager"
+                />
+
+                <Input
+                  label="Google Analytics ID"
+                  placeholder="G-XXXXXXXXXX"
+                  value={form.googleAnalyticsId}
+                  onChange={(e) => updateField('googleAnalyticsId', e.target.value)}
+                  error={fieldErrors.googleAnalyticsId}
+                  hint="Measurement ID from Google Analytics 4 (starts with G-)"
+                />
+
+                <Input
+                  label="Google Tag Manager ID"
+                  placeholder="GTM-XXXXXX"
+                  value={form.googleTagManagerId}
+                  onChange={(e) => updateField('googleTagManagerId', e.target.value)}
+                  error={fieldErrors.googleTagManagerId}
+                  hint="Container ID from Google Tag Manager (starts with GTM-)"
+                />
+
+                <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-4">
+                  <h4 className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-2">
+                    How to find your tracking IDs
+                  </h4>
+                  <ul className="text-sm text-surface-600 dark:text-surface-400 space-y-2">
+                    <li>
+                      <strong>Facebook Pixel:</strong> Meta Events Manager → Data Sources → Your Pixel → Copy Pixel ID
+                    </li>
+                    <li>
+                      <strong>TikTok Pixel:</strong> TikTok Events Manager → Assets → Pixel → Copy Pixel ID
+                    </li>
+                    <li>
+                      <strong>Google Analytics:</strong> Admin → Data Streams → Your Stream → Measurement ID
+                    </li>
+                    <li>
+                      <strong>Google Tag Manager:</strong> Container → Container ID (top right)
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Save Button */}
+          <div className="flex items-center justify-end gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => router.push('/admin/sellpages')}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={saving}
+              leftIcon={<Save className="h-4 w-4" />}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </form>
       )}
 
       {/* Tab Content: SEO */}

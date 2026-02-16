@@ -93,7 +93,11 @@
       "Bash(git checkout:*)",
       "Bash(git merge:*)",
       "Bash(git tag:*)",
-      "Bash(pnpm run build:*)"
+      "Bash(pnpm run build:*)",
+      "WebFetch(domain:developers.google.com)",
+      "WebFetch(domain:ads.tiktok.com)",
+      "WebFetch(domain:support.google.com)",
+      "WebFetch(domain:plainenglish.io)"
     ]
   }
 }

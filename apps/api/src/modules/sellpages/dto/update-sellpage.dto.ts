@@ -85,4 +85,43 @@ export class UpdateSellpageDto {
   @IsOptional()
   @IsUUID()
   assignedTo?: string;
+
+  @ApiPropertyOptional({ example: 'offer.example.com' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  sellpageDomain?: string;
+
+  @ApiPropertyOptional({ example: '1234567890123456' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^\d{15,16}$/, {
+    message: 'Facebook Pixel ID must be 15-16 digits',
+  })
+  facebookPixelId?: string;
+
+  @ApiPropertyOptional({ example: 'ABC123DEF456' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  tiktokPixelId?: string;
+
+  @ApiPropertyOptional({ example: 'G-XXXXXXXXXX' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^G-[A-Z0-9]+$/, {
+    message: 'Google Analytics ID must start with G- followed by alphanumeric characters',
+  })
+  googleAnalyticsId?: string;
+
+  @ApiPropertyOptional({ example: 'GTM-XXXXXX' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^GTM-[A-Z0-9]+$/, {
+    message: 'Google Tag Manager ID must start with GTM- followed by alphanumeric characters',
+  })
+  googleTagManagerId?: string;
 }
