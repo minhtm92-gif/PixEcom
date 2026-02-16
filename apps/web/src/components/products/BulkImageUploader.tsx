@@ -96,13 +96,6 @@ function SortableImage({ media, onDelete }: SortableImageProps) {
       <div
         {...attributes}
         {...listeners}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-        }}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
         className="absolute top-2 left-2 z-10 p-1 bg-white rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
       >
         <GripVertical className="w-4 h-4 text-gray-600" />
@@ -282,14 +275,10 @@ export function BulkImageUploader({
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (!over || active.id === over.id) return;
+    // Restore scroll
+    document.body.style.overflow = '';
 
-    // Prevent any default behavior and event bubbling
-    if (event.activatorEvent) {
-      const nativeEvent = event.activatorEvent as Event;
-      nativeEvent.preventDefault?.();
-      nativeEvent.stopPropagation?.();
-    }
+    if (!over || active.id === over.id) return;
 
     const oldIndex = media.findIndex((m) => m.id === active.id);
     const newIndex = media.findIndex((m) => m.id === over.id);
@@ -403,6 +392,14 @@ export function BulkImageUploader({
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
+            onDragStart={() => {
+              // Prevent page scroll during drag
+              document.body.style.overflow = 'hidden';
+            }}
+            onDragCancel={() => {
+              // Restore scroll
+              document.body.style.overflow = '';
+            }}
           >
             <SortableContext items={media.map((m) => m.id)} strategy={rectSortingStrategy}>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
