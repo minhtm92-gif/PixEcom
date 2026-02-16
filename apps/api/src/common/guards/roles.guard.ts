@@ -4,8 +4,9 @@ import { MemberRole } from '@prisma/client';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
 const ROLE_HIERARCHY: Record<MemberRole, number> = {
-  OWNER: 4,
-  ADMIN: 3,
+  OWNER: 5,
+  ADMIN: 4,
+  SELLER: 3,
   EDITOR: 2,
   VIEWER: 1,
 };

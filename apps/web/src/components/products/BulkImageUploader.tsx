@@ -103,7 +103,12 @@ function SortableImage({ media, onDelete }: SortableImageProps) {
 
       {/* Delete Button */}
       <button
-        onClick={() => onDelete(media.id)}
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDelete(media.id);
+        }}
         className="absolute top-2 right-2 z-10 p-1 bg-red-600 text-white rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
       >
         <X className="w-4 h-4" />

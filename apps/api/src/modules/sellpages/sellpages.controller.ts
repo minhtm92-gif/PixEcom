@@ -140,4 +140,16 @@ export class SellpagesController {
   ) {
     return this.sellpagesService.deletePreviewToken(workspaceId, sellpageId, tokenId);
   }
+
+  @Post(':id/duplicate')
+  @Roles(MemberRole.EDITOR)
+  @ApiOperation({ summary: 'Duplicate a sellpage' })
+  duplicate(
+    @CurrentWorkspace('id') workspaceId: string,
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body?: { slug?: string; titleOverride?: string },
+  ) {
+    return this.sellpagesService.duplicate(workspaceId, userId, id, body);
+  }
 }

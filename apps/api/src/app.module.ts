@@ -15,12 +15,14 @@ import { CheckoutModule } from './modules/checkout/checkout.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { LegalModule } from './modules/legal/legal.module';
+import { LegalSetsModule } from './modules/legal-sets/legal-sets.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { PublicModule } from './modules/public/public.module';
 import { HealthModule } from './modules/health/health.module';
 import { DomainsModule } from './modules/domains/domains.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { EmailModule } from './modules/email/email.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -41,10 +43,12 @@ import { EmailModule } from './modules/email/email.module';
     OrdersModule,
     PaymentsModule,
     LegalModule,
+    LegalSetsModule,
     SettingsModule,
     DomainsModule,
     ReviewsModule,
     EmailModule,
+    UploadModule,
     PublicModule,
     HealthModule,
   ],

@@ -14,6 +14,7 @@ import {
   Building2,
   Check,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 interface WorkspaceListItem {
   id: string;
@@ -103,7 +104,7 @@ export function AdminHeader() {
     : 'User';
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-surface-200 bg-white px-6">
+    <header className="flex h-16 items-center justify-between border-b border-surface-200 bg-white dark:bg-surface-900 dark:border-surface-700 px-6">
       {/* Left: Search */}
       <div className="flex flex-1 items-center">
         <div className="relative w-full max-w-md">
@@ -200,6 +201,9 @@ export function AdminHeader() {
             </div>
           )}
         </div>
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
 
         {/* Notifications */}
         <button

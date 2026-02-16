@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api-client';
+import { BulkOperations } from '@/components/sellpages/BulkOperations';
 import {
   Plus,
   Search,
@@ -15,6 +16,10 @@ import {
   FileText,
   Loader2,
   AlertCircle,
+  Copy,
+  Eye,
+  QrCode,
+  Trash2,
 } from 'lucide-react';
 
 interface SellpageItem {
@@ -55,6 +60,8 @@ export default function SellpagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchSellpages();
@@ -97,6 +104,43 @@ export default function SellpagesPage() {
 
   function getDisplayTitle(sp: SellpageItem): string {
     return sp.titleOverride || sp.slug;
+  }
+
+  async function handleDuplicate(sellpage: SellpageItem, e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      const duplicated = await apiClient.post(`/sellpages/${sellpage.id}/duplicate`);
+      await fetchSellpages();
+      router.push(`/admin/sellpages/${duplicated.id}`);
+    } catch (err) {
+      console.error('Failed to duplicate sellpage:', err);
+    }
+  }
+
+  async function handleDelete(sellpageId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this sellpage?')) return;
+
+    try {
+      await apiClient.delete(`/sellpages/${sellpageId}`);
+      await fetchSellpages();
+    } catch (err) {
+      console.error('Failed to delete sellpage:', err);
+    }
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.length === filteredSellpages.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredSellpages.map((sp) => sp.id));
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
   }
 
   return (
@@ -231,14 +275,29 @@ export default function SellpagesPage() {
         </Card>
       )}
 
+      {/* Bulk Operations Bar */}
+      <BulkOperations
+        selectedIds={selectedIds}
+        onClearSelection={() => setSelectedIds([])}
+        onOperationComplete={fetchSellpages}
+      />
+
       {/* Sellpages Table */}
       {!loading && !error && filteredSellpages.length > 0 && (
         <Card padding="none">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-surface-200 bg-surface-50">
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-surface-500">
+                <tr className="border-b border-surface-200 bg-surface-50 dark:border-surface-700 dark:bg-surface-800">
+                  <th className="w-12 px-6 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length === filteredSellpages.length && filteredSellpages.length > 0}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
+                    />
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-surface-500 dark:text-surface-400">
                     Sellpage
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-surface-500">
@@ -255,13 +314,23 @@ export default function SellpagesPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-surface-100">
+              <tbody className="divide-y divide-surface-100 dark:divide-surface-700">
                 {filteredSellpages.map((sp) => (
                   <tr
                     key={sp.id}
-                    className="cursor-pointer transition-colors hover:bg-surface-50"
+                    className={`cursor-pointer transition-colors hover:bg-surface-50 dark:hover:bg-surface-800 ${
+                      selectedIds.includes(sp.id) ? 'bg-brand-50 dark:bg-brand-900/10' : ''
+                    }`}
                     onClick={() => router.push(`/admin/sellpages/${sp.id}`)}
                   >
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(sp.id)}
+                        onChange={() => toggleSelect(sp.id)}
+                        className="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div>
                         <p className="text-sm font-medium text-surface-900">
@@ -282,15 +351,57 @@ export default function SellpagesPage() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        className="rounded-lg p-1 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/admin/sellpages/${sp.id}`);
-                        }}
-                      >
-                        <MoreHorizontal className="h-5 w-5" />
-                      </button>
+                      <div className="relative">
+                        <button
+                          className="rounded-lg p-1 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(openMenuId === sp.id ? null : sp.id);
+                          }}
+                        >
+                          <MoreHorizontal className="h-5 w-5" />
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {openMenuId === sp.id && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                              }}
+                            />
+                            <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-surface-200 bg-white py-1 shadow-lg dark:border-surface-700 dark:bg-surface-800">
+                              <button
+                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-surface-700 hover:bg-surface-50 dark:text-surface-300 dark:hover:bg-surface-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/admin/sellpages/${sp.id}`);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                                Edit Sellpage
+                              </button>
+                              <button
+                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-surface-700 hover:bg-surface-50 dark:text-surface-300 dark:hover:bg-surface-700"
+                                onClick={(e) => handleDuplicate(sp, e)}
+                              >
+                                <Copy className="h-4 w-4" />
+                                Duplicate
+                              </button>
+                              <div className="my-1 border-t border-surface-200 dark:border-surface-700" />
+                              <button
+                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                                onClick={(e) => handleDelete(sp.id, e)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

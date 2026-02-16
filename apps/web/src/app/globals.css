@@ -2,17 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+/** Metronic-inspired Color System **/
+:root {
+  /* Light Mode Colors */
+  --background: #ffffff;
+  --foreground: #18181B; /* zinc-950 */
+  --card: #ffffff;
+  --card-foreground: #18181B;
+  --popover: #ffffff;
+  --popover-foreground: #18181B;
+  --primary: #3B82F6; /* blue-500 */
+  --primary-foreground: #ffffff;
+  --secondary: #F4F4F5; /* zinc-100 */
+  --secondary-foreground: #18181B;
+  --muted: #F4F4F5;
+  --muted-foreground: #71717A; /* zinc-500 */
+  --accent: #F4F4F5;
+  --accent-foreground: #18181B;
+  --destructive: #DC2626; /* red-600 */
+  --destructive-foreground: #ffffff;
+  --border: #E4E4E7; /* zinc-200 */
+  --input: #E4E4E7;
+  --ring: #A1A1AA; /* zinc-400 */
+  --radius: 0.5rem;
+}
+
+.dark {
+  /* Dark Mode Colors - Metronic inspired */
+  --background: #09090B; /* zinc-950 */
+  --foreground: #FAFAFA; /* zinc-50 */
+  --card: #18181B; /* zinc-900 */
+  --card-foreground: #FAFAFA;
+  --popover: #18181B;
+  --popover-foreground: #FAFAFA;
+  --primary: #3B82F6;
+  --primary-foreground: #ffffff;
+  --secondary: #27272A; /* zinc-800 */
+  --secondary-foreground: #FAFAFA;
+  --muted: #1F1F23; /* between zinc-900 and zinc-950 */
+  --muted-foreground: #A1A1AA;
+  --accent: #27272A;
+  --accent-foreground: #FAFAFA;
+  --destructive: #DC2626;
+  --destructive-foreground: #ffffff;
+  --border: #27272A;
+  --input: #27272A;
+  --ring: #52525B;
+}
+
+/** Base Styles **/
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-surface-50 text-surface-900;
   }
 
-  /* Scrollbar styling */
+  /* Smooth dark mode background - Metronic style */
+  .dark body {
+    @apply bg-[#09090B] text-surface-100;
+  }
+
+  /* Custom Scrollbar - Metronic style */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -23,36 +78,78 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-surface-300;
+    @apply bg-surface-300 dark:bg-surface-700 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-surface-400;
+    @apply bg-surface-400 dark:bg-surface-600;
   }
 
-  /* Remove default focus ring, we handle it with ring utilities */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(212 212 216) transparent; /* surface-300 */
+  }
+
+  .dark * {
+    scrollbar-color: rgb(63 63 70) transparent; /* surface-700 */
+  }
+
+  /* Selection - Metronic style */
+  ::selection {
+    @apply bg-brand-200 text-brand-900 dark:bg-brand-800 dark:text-brand-100;
+  }
+
+  /* Remove default focus ring */
   *:focus {
     outline: none;
   }
 
-  /* Better default focus-visible for keyboard navigation */
+  /* Better default focus-visible - Metronic style */
   *:focus-visible {
-    @apply ring-2 ring-brand-500 ring-offset-2;
+    @apply ring-2 ring-brand-500 ring-offset-2 ring-offset-surface-50 dark:ring-offset-[#09090B];
   }
 }
 
+/** Component Styles **/
 @layer components {
-  /* Form input reset for Tailwind forms plugin */
+  /* Form input reset */
   .form-input-reset {
-    @apply border-surface-300 focus:border-brand-500 focus:ring-brand-500;
+    @apply border-surface-300 focus:border-brand-500 focus:ring-brand-500 dark:border-surface-700 dark:bg-surface-800;
   }
 
   /* Skeleton loading animation */
   .skeleton {
-    @apply animate-pulse rounded bg-surface-200;
+    @apply animate-pulse rounded bg-surface-200 dark:bg-surface-800;
+  }
+
+  /* Shadow utilities - Metronic inspired */
+  .shadow-card {
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.03),
+      0 2px 4px rgba(0, 0, 0, 0.05),
+      0 12px 24px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark .shadow-card {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      0 12px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .shadow-header {
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  .dark .shadow-header {
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  /* Transition - Metronic style */
+  .transition-theme {
+    @apply transition-colors duration-200 ease-in-out;
   }
 }
 
+/** Utility Classes **/
 @layer utilities {
   /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
@@ -67,5 +164,26 @@
   /* Text balance for headings */
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Shimmer animation for loading states */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
   }
 }

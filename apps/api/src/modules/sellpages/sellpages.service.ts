@@ -7,6 +7,7 @@ import { SellpageStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateSellpageDto } from './dto/create-sellpage.dto';
 import { UpdateSellpageDto } from './dto/update-sellpage.dto';
+import { generateSellpageUrl } from './sellpages.utils';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -58,8 +59,14 @@ export class SellpagesService {
       this.prisma.sellpage.count({ where }),
     ]);
 
+    // Add publicUrl to each sellpage
+    const sellpagesWithUrls = sellpages.map(sellpage => ({
+      ...sellpage,
+      publicUrl: generateSellpageUrl(sellpage),
+    }));
+
     return {
-      data: sellpages,
+      data: sellpagesWithUrls,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
@@ -138,7 +145,10 @@ export class SellpagesService {
       throw new NotFoundException('Sellpage not found');
     }
 
-    return sellpage;
+    return {
+      ...sellpage,
+      publicUrl: generateSellpageUrl(sellpage),
+    };
   }
 
   async update(workspaceId: string, sellpageId: string, dto: UpdateSellpageDto) {
@@ -368,6 +378,65 @@ export class SellpagesService {
       })),
       expiresAt: tokenRecord.expiresAt,
     };
+  }
+
+  /**
+   * Duplicate a sellpage
+   */
+  async duplicate(
+    workspaceId: string,
+    userId: string,
+    sellpageId: string,
+    options?: { slug?: string; titleOverride?: string },
+  ) {
+    // Get the original sellpage
+    const original = await this.ensureSellpageExists(workspaceId, sellpageId);
+
+    // Generate new slug if not provided
+    let newSlug = options?.slug || `${original.slug}-copy`;
+
+    // Ensure slug is unique
+    let counter = 1;
+    while (true) {
+      const existing = await this.prisma.sellpage.findFirst({
+        where: { workspaceId, slug: newSlug },
+      });
+      if (!existing) break;
+      newSlug = options?.slug
+        ? `${options.slug}-${counter}`
+        : `${original.slug}-copy-${counter}`;
+      counter++;
+    }
+
+    // Create duplicate with DRAFT status
+    const duplicate = await this.prisma.sellpage.create({
+      data: {
+        workspaceId,
+        storeId: original.storeId,
+        productId: original.productId,
+        slug: newSlug,
+        subdomain: null, // Don't copy subdomain
+        customDomain: null, // Don't copy custom domain
+        titleOverride: options?.titleOverride || (original.titleOverride ? `${original.titleOverride} (Copy)` : null),
+        descriptionOverride: original.descriptionOverride,
+        seoTitle: original.seoTitle,
+        seoDescription: original.seoDescription,
+        seoOgImage: original.seoOgImage,
+        status: SellpageStatus.DRAFT, // Always start as draft
+        sections: original.sections as Prisma.InputJsonValue,
+        headerConfig: original.headerConfig as Prisma.InputJsonValue,
+        footerConfig: original.footerConfig as Prisma.InputJsonValue,
+        boostModules: original.boostModules as Prisma.InputJsonValue,
+        discountRules: original.discountRules as Prisma.InputJsonValue,
+        createdBy: userId,
+      },
+      include: {
+        store: { select: { id: true, name: true, slug: true } },
+        product: { select: { id: true, name: true, slug: true, basePrice: true } },
+      },
+    });
+
+    return duplicate;
   }
 
   private async ensureSellpageExists(workspaceId: string, sellpageId: string) {

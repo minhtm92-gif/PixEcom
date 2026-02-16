@@ -24,6 +24,9 @@ model User {
   refreshTokens    RefreshToken[]
   createdReviews   ProductReview[]          @relation("ReviewCreator")
   createdPreviews  SellpagePreviewToken[]
+  sellerSellpages  Sellpage[]               @relation("SellerSellpages")
+  sellerAnalytics  SellerAnalytics[]
+  utmCampaigns     UtmCampaign[]
 
   @@map("users")
 }
@@ -60,6 +63,7 @@ model Workspace {
   paymentProviders PaymentProvider[]
   orders           Order[]
   productReviews   ProductReview[]
+  utmCampaigns     UtmCampaign[]
 
   @@map("workspaces")
 }
@@ -67,6 +71,7 @@ model Workspace {
 enum MemberRole {
   OWNER
   ADMIN
+  SELLER
   EDITOR
   VIEWER
 
@@ -118,6 +123,7 @@ model GeneralSettings {
 model Store {
   id                  String   @id @default(uuid()) @db.Uuid
   workspaceId         String   @map("workspace_id") @db.Uuid
+  legalSetId          String?  @map("legal_set_id") @db.Uuid
   name                String   @db.VarChar(255)
   slug                String   @db.VarChar(100)
   primaryDomain       String   @map("primary_domain") @db.VarChar(255)
@@ -134,6 +140,7 @@ model Store {
   updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   workspace          Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  legalSet           LegalSet?             @relation("StoreLegalSet", fields: [legalSetId], references: [id], onDelete: SetNull)
   sellpages          Sellpage[]
   storePolicies      StorePolicy[]
   orders             Order[]
@@ -147,6 +154,7 @@ model Store {
   @@unique([workspaceId, slug], name: "uq_store_slug")
   @@unique([workspaceId, primaryDomain], name: "uq_store_domain")
   @@index([workspaceId])
+  @@index([legalSetId])
   @@map("stores")
 }
 
@@ -307,6 +315,31 @@ enum SellpageStatus {
   @@map("sellpage_status")
 }
 
+model SellpageTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  category    String   @db.VarChar(50) // "minimal", "high-converting", "affiliate", etc.
+  thumbnail   String   @db.VarChar(500)
+
+  // Template configuration
+  sections     Json    @default("[]")
+  headerConfig Json    @default("{}") @map("header_config")
+  footerConfig Json    @default("{}") @map("footer_config")
+  themeConfig  Json    @default("{}") @map("theme_config")
+
+  isActive    Boolean  @default(true) @map("is_active")
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  usageCount  Int      @default(0) @map("usage_count")
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([category])
+  @@index([isFeatured])
+  @@map("sellpage_templates")
+}
+
 model Sellpage {
   id                  String         @id @default(uuid()) @db.Uuid
   workspaceId         String         @map("workspace_id") @db.Uuid
@@ -331,14 +364,18 @@ model Sellpage {
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  store         Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  product       Product                @relation(fields: [productId], references: [id], onDelete: Restrict)
-  orders        Order[]
-  previewTokens SellpagePreviewToken[]
+  store            Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product          Product                @relation(fields: [productId], references: [id], onDelete: Restrict)
+  seller           User?                  @relation("SellerSellpages", fields: [assignedTo], references: [id], onDelete: SetNull)
+  orders           Order[]
+  previewTokens    SellpagePreviewToken[]
+  sellerAnalytics  SellerAnalytics[]
+  analyticsEvents  AnalyticsEvent[]
 
   @@unique([storeId, slug], name: "uq_sellpage_slug")
   @@index([workspaceId])
   @@index([storeId])
+  @@index([assignedTo])
   @@map("sellpages")
 }
 
@@ -439,9 +476,10 @@ model Order {
   workspace      Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   store          Store?            @relation(fields: [storeId], references: [id], onDelete: SetNull)
   sellpage       Sellpage?         @relation(fields: [sellpageId], references: [id], onDelete: SetNull)
-  items          OrderItem[]
-  emailMessages  EmailMessage[]
-  recoveredCarts CartAbandonment[]
+  items           OrderItem[]
+  emailMessages   EmailMessage[]
+  recoveredCarts  CartAbandonment[]
+  analyticsEvents AnalyticsEvent[]
 
   @@unique([workspaceId, orderNumber], name: "uq_order_number")
   @@index([workspaceId])
@@ -492,22 +530,43 @@ model PaymentProvider {
 
 // ─── LEGAL ─────────────────────────────────────────
 
+model LegalSet {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  isDefault   Boolean  @default(false) @map("is_default")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  policies LegalPolicy[]
+  stores   Store[]       @relation("StoreLegalSet")
+
+  @@index([workspaceId])
+  @@map("legal_sets")
+}
+
 model LegalPolicy {
   id          String   @id @default(uuid()) @db.Uuid
   workspaceId String   @map("workspace_id") @db.Uuid
+  legalSetId  String?  @map("legal_set_id") @db.Uuid
   title       String   @db.VarChar(255)
   slug        String   @db.VarChar(100)
   policyType  String   @map("policy_type") @db.VarChar(50)
   bodyHtml    String   @map("body_html") @db.Text
+  displayOrder Int     @default(0) @map("display_order")
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  legalSet      LegalSet?     @relation(fields: [legalSetId], references: [id], onDelete: Cascade)
   storePolicies StorePolicy[]
 
-  @@unique([workspaceId, slug], name: "uq_legal_policy_slug")
+  @@unique([workspaceId, legalSetId, slug], name: "uq_legal_policy_slug")
   @@index([workspaceId])
+  @@index([legalSetId])
   @@map("legal_policies")
 }
 
@@ -681,4 +740,115 @@ model EmailSubscription {
   @@unique([storeId, email])
   @@index([storeId, email, isUnsubscribed])
   @@map("email_subscriptions")
+}
+
+// ─── SELLER ANALYTICS & UTM CAMPAIGNS ─────────────────
+
+model SellerAnalytics {
+  id               String   @id @default(uuid()) @db.Uuid
+  sellerId         String   @map("seller_id") @db.Uuid
+  sellpageId       String   @map("sellpage_id") @db.Uuid
+  date             DateTime @db.Date
+  views            Int      @default(0)
+  addToCart        Int      @default(0) @map("add_to_cart")
+  initiateCheckout Int      @default(0) @map("initiate_checkout")
+  addPaymentInfo   Int      @default(0) @map("add_payment_info")
+  purchases        Int      @default(0)
+  revenue          Decimal  @default(0) @db.Decimal(10, 2)
+
+  // UTM tracking
+  utmSource        String?  @map("utm_source") @db.VarChar(100)
+  utmMedium        String?  @map("utm_medium") @db.VarChar(100)
+  utmCampaign      String?  @map("utm_campaign") @db.VarChar(100)
+  utmContent       String?  @map("utm_content") @db.VarChar(255)
+  utmTerm          String?  @map("utm_term") @db.VarChar(255)
+
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  seller           User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  sellpage         Sellpage @relation(fields: [sellpageId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId, date])
+  @@index([sellpageId, date])
+  @@index([utmCampaign])
+  @@map("seller_analytics")
+}
+
+model UtmCampaign {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  sellerId    String   @map("seller_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+
+  // UTM parameters
+  utmSource   String   @map("utm_source") @db.VarChar(100)
+  utmMedium   String   @map("utm_medium") @db.VarChar(100)
+  utmCampaign String   @map("utm_campaign") @db.VarChar(100)
+  utmContent  String?  @map("utm_content") @db.VarChar(255)
+  utmTerm     String?  @map("utm_term") @db.VarChar(255)
+
+  // Campaign settings
+  startDate   DateTime? @map("start_date") @db.Timestamptz
+  endDate     DateTime? @map("end_date") @db.Timestamptz
+  budget      Decimal?  @db.Decimal(10, 2)
+  isActive    Boolean   @default(true) @map("is_active")
+
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  seller      User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([sellerId])
+  @@index([utmCampaign])
+  @@map("utm_campaigns")
+}
+
+enum EventType {
+  VIEW_CONTENT
+  ADD_TO_CART
+  INITIATE_CHECKOUT
+  ADD_PAYMENT_INFO
+  PURCHASE
+
+  @@map("event_type")
+}
+
+model AnalyticsEvent {
+  id             String    @id @default(uuid()) @db.Uuid
+  sellpageId     String    @map("sellpage_id") @db.Uuid
+  eventType      EventType @map("event_type")
+  sessionId      String    @map("session_id") @db.VarChar(100)
+
+  // Visitor data
+  ipAddress      String?   @map("ip_address") @db.VarChar(45)
+  userAgent      String?   @map("user_agent") @db.Text
+  country        String?   @db.VarChar(100)
+  city           String?   @db.VarChar(100)
+  device         String?   @db.VarChar(50)
+
+  // UTM data
+  utmSource      String?   @map("utm_source") @db.VarChar(100)
+  utmMedium      String?   @map("utm_medium") @db.VarChar(100)
+  utmCampaign    String?   @map("utm_campaign") @db.VarChar(100)
+  utmContent     String?   @map("utm_content") @db.VarChar(255)
+  utmTerm        String?   @map("utm_term") @db.VarChar(255)
+
+  // Event data
+  revenue        Decimal?  @db.Decimal(10, 2)
+  orderId        String?   @map("order_id") @db.Uuid
+
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  sellpage       Sellpage  @relation(fields: [sellpageId], references: [id], onDelete: Cascade)
+  order          Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([sellpageId, createdAt])
+  @@index([sessionId])
+  @@index([utmCampaign])
+  @@index([eventType, createdAt])
+  @@map("analytics_events")
 }

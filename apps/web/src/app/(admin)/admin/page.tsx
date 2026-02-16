@@ -14,6 +14,11 @@ import {
   ArrowUpRight,
   AlertCircle,
 } from 'lucide-react';
+import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
+import { SellpageAnalytics } from '@/components/dashboard/SellpageAnalytics';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 
 // --- Types ---
 
@@ -67,11 +72,11 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor, loading }: Stat
       <CardContent>
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm font-medium text-surface-500">{title}</p>
+            <p className="text-sm font-medium text-surface-500 dark:text-surface-400">{title}</p>
             {loading ? (
-              <div className="mt-2 h-8 w-24 animate-pulse rounded bg-surface-200" />
+              <div className="mt-2 h-8 w-24 animate-pulse rounded bg-surface-200 dark:bg-surface-700" />
             ) : (
-              <p className="mt-2 text-2xl font-bold text-surface-900">{value}</p>
+              <p className="mt-2 text-2xl font-bold text-surface-900 dark:text-surface-100">{value}</p>
             )}
           </div>
           <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', iconBg)}>
@@ -122,9 +127,21 @@ export default function DashboardPage() {
   const [recentOrders, setRecentOrders] = useState<OrderItem[]>([]);
   const [topProducts, setTopProducts] = useState<ProductItem[]>([]);
 
+  const { isOnboardingComplete, setShowWizard } = useOnboardingStore();
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Show onboarding wizard for new users
+  useEffect(() => {
+    if (!isOnboardingComplete) {
+      const timer = setTimeout(() => {
+        setShowWizard(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnboardingComplete, setShowWizard]);
 
   async function fetchDashboardData() {
     setLoading(true);
@@ -193,8 +210,8 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-surface-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-surface-500">
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Dashboard</h1>
+        <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
           Welcome back! Here&apos;s an overview of your store.
         </p>
       </div>
@@ -213,41 +230,50 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Setup Checklist (for new users) */}
+      {!isOnboardingComplete && <SetupChecklist />}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Revenue"
           value={formatCurrency(stats.totalRevenue)}
           icon={DollarSign}
-          iconBg="bg-green-100"
-          iconColor="text-green-600"
+          iconBg="bg-green-100 dark:bg-green-900/20"
+          iconColor="text-green-600 dark:text-green-400"
           loading={loading}
         />
         <StatCard
           title="Orders"
           value={String(stats.orderCount)}
           icon={ShoppingCart}
-          iconBg="bg-blue-100"
-          iconColor="text-blue-600"
+          iconBg="bg-blue-100 dark:bg-blue-900/20"
+          iconColor="text-blue-600 dark:text-blue-400"
           loading={loading}
         />
         <StatCard
           title="Products"
           value={String(stats.productCount)}
           icon={Package}
-          iconBg="bg-purple-100"
-          iconColor="text-purple-600"
+          iconBg="bg-purple-100 dark:bg-purple-900/20"
+          iconColor="text-purple-600 dark:text-purple-400"
           loading={loading}
         />
         <StatCard
           title="Stores"
           value={String(stats.storeCount)}
           icon={Store}
-          iconBg="bg-orange-100"
-          iconColor="text-orange-600"
+          iconBg="bg-orange-100 dark:bg-orange-900/20"
+          iconColor="text-orange-600 dark:text-orange-400"
           loading={loading}
         />
       </div>
+
+      {/* Sellpage Analytics */}
+      <SellpageAnalytics />
+
+      {/* Quick Actions */}
+      <QuickActions />
 
       {/* Recent Activity Section */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -255,10 +281,10 @@ export default function DashboardPage() {
         <Card>
           <CardContent>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-surface-900">Recent Orders</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Recent Orders</h2>
               <Link
                 href="/admin/orders"
-                className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+                className="flex items-center gap-1 text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-500"
               >
                 View all
                 <ArrowUpRight className="h-4 w-4" />
@@ -324,10 +350,10 @@ export default function DashboardPage() {
         <Card>
           <CardContent>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-surface-900">Products</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Products</h2>
               <Link
                 href="/admin/products"
-                className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+                className="flex items-center gap-1 text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-500"
               >
                 View all
                 <ArrowUpRight className="h-4 w-4" />
@@ -394,6 +420,9 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Onboarding Wizard */}
+      <OnboardingWizard />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal, ModalFooter } from '@/components/ui/modal';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { apiClient, ApiClientError } from '@/lib/api-client';
 import {
   Save,
@@ -19,10 +20,15 @@ import {
   Code,
   Search as SearchIcon,
   ExternalLink,
+  Wand2,
 } from 'lucide-react';
 import { PreviewLinkModal } from '@/components/sellpages/PreviewLinkModal';
+import { TemplateSelectorModal } from '@/components/sellpages/TemplateSelectorModal';
+import { SellpageActions } from '@/components/sellpages/SellpageActions';
+import { UTMLinkGenerator } from '@/components/sellpages/UTMLinkGenerator';
 import { SellpageBuilder } from '@/components/sellpage/SellpageBuilder';
 import { SectionData } from '@/components/sellpage/SectionRenderer';
+import { SellpageTemplate } from '@/lib/templates';
 
 interface SellpageData {
   id: string;
@@ -39,6 +45,8 @@ interface SellpageData {
   seoTitle?: string;
   seoDescription?: string;
   seoOgImage?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
   sections?: SectionData[];
   createdAt?: string;
   updatedAt?: string;
@@ -63,8 +71,9 @@ export default function EditSellpagePage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [sellpage, setSellpage] = useState<SellpageData | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'design' | 'seo'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'design' | 'seo' | 'marketing'>('details');
   const [pageSections, setPageSections] = useState<SectionData[]>([]);
   const [product, setProduct] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -77,6 +86,8 @@ export default function EditSellpagePage() {
     seoTitle: '',
     seoDescription: '',
     seoOgImage: '',
+    logoUrl: '',
+    faviconUrl: '',
   });
 
   useEffect(() => {
@@ -98,6 +109,8 @@ export default function EditSellpagePage() {
         seoTitle: data.seoTitle || '',
         seoDescription: data.seoDescription || '',
         seoOgImage: data.seoOgImage || '',
+        logoUrl: data.logoUrl || '',
+        faviconUrl: data.faviconUrl || '',
       });
 
       // Fetch product and reviews if productId exists
@@ -219,6 +232,21 @@ export default function EditSellpagePage() {
     }
   }
 
+  async function handleApplyTemplate(template: SellpageTemplate) {
+    try {
+      const newSections = template.sections.map((section, index) => ({
+        ...section,
+        position: index,
+      }));
+      await apiClient.patch(`/sellpages/${sellpageId}/sections`, { sections: newSections });
+      setPageSections(newSections);
+      setShowTemplateModal(false);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to apply template';
+      setFieldErrors({ _form: message });
+    }
+  }
+
   function getStoreName(): string {
     return sellpage?.store?.name || sellpage?.storeName || 'Unknown Store';
   }
@@ -325,6 +353,19 @@ export default function EditSellpagePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Sellpage Actions (Copy, View, QR, UTM) */}
+          {sellpage && (
+            <SellpageActions
+              sellpageId={sellpage.id}
+              slug={sellpage.slug}
+              storeSlug={sellpage.store?.slug}
+              storeDomain={sellpage.store?.primaryDomain}
+              status={sellpage.status}
+            />
+          )}
+
+          <div className="mx-2 h-6 w-px bg-surface-200 dark:bg-surface-700" />
+
           <Button
             variant="outline"
             leftIcon={<ExternalLink className="h-4 w-4" />}
@@ -357,11 +398,12 @@ export default function EditSellpagePage() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="border-b border-surface-200">
+      <div className="border-b border-surface-200 dark:border-surface-700">
         <nav className="-mb-px flex gap-6">
           {[
             { id: 'details', label: 'Details' },
             { id: 'design', label: 'Page Design' },
+            { id: 'marketing', label: 'Marketing' },
             { id: 'seo', label: 'SEO' },
           ].map((tab) => (
             <button
@@ -398,7 +440,7 @@ export default function EditSellpagePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <Input
                 label="Slug"
                 placeholder="my-product-page"
@@ -419,7 +461,7 @@ export default function EditSellpagePage() {
               <div className="w-full">
                 <label
                   htmlFor="description-override"
-                  className="mb-1.5 block text-sm font-medium text-surface-700"
+                  className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300"
                 >
                   Description Override
                 </label>
@@ -429,16 +471,43 @@ export default function EditSellpagePage() {
                   value={form.descriptionOverride}
                   onChange={(e) => updateField('descriptionOverride', e.target.value)}
                   placeholder="Custom description for this sellpage (optional)"
-                  className="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2.5 text-sm text-surface-900 placeholder:text-surface-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  className="block w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 px-3 py-2.5 text-sm text-surface-900 dark:text-surface-100 placeholder:text-surface-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 />
-                <p className="mt-1.5 text-sm text-surface-500">
+                <p className="mt-1.5 text-sm text-surface-500 dark:text-surface-400">
                   Leave empty to use the product description
                 </p>
               </div>
+
+              {/* Branding Section */}
+              <div className="border-t border-surface-200 dark:border-surface-700 pt-4 space-y-4">
+                <h4 className="text-sm font-semibold text-surface-900 dark:text-surface-100">
+                  Branding Override
+                </h4>
+                <p className="text-sm text-surface-500 dark:text-surface-400 -mt-2">
+                  Customize logo and favicon for this sellpage. Leave empty to use workspace defaults.
+                </p>
+
+                <ImageUpload
+                  label="Logo Override"
+                  value={form.logoUrl}
+                  onChange={(url) => updateField('logoUrl', url)}
+                  dimensions="400x400px"
+                  helpText="Override the workspace logo for this sellpage only. PNG, JPG or WebP. Max 2MB."
+                />
+
+                <ImageUpload
+                  label="Favicon Override"
+                  value={form.faviconUrl}
+                  onChange={(url) => updateField('faviconUrl', url)}
+                  dimensions="32x32px or 64x64px"
+                  helpText="Override the workspace favicon for this sellpage only. PNG or ICO format preferred."
+                />
+              </div>
+
               <div className="w-full">
                 <label
                   htmlFor="status-select"
-                  className="mb-1.5 block text-sm font-medium text-surface-700"
+                  className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300"
                 >
                   Status
                 </label>
@@ -446,7 +515,7 @@ export default function EditSellpagePage() {
                   id="status-select"
                   value={form.status}
                   onChange={(e) => updateField('status', e.target.value)}
-                  className="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2.5 text-sm text-surface-900 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  className="block w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 px-3 py-2.5 text-sm text-surface-900 dark:text-surface-100 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 >
                   <option value="DRAFT">Draft</option>
                   <option value="PUBLISHED">Published</option>
@@ -480,11 +549,38 @@ export default function EditSellpagePage() {
       {/* Tab Content: Page Design */}
       {activeTab === 'design' && product && (
         <div className="space-y-6">
+          {/* Template Selector Button */}
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              leftIcon={<Wand2 className="h-4 w-4" />}
+              onClick={() => setShowTemplateModal(true)}
+            >
+              Choose Template
+            </Button>
+          </div>
+
           <SellpageBuilder
             initialSections={pageSections}
             product={product}
             reviews={reviews}
             onChange={handleSaveSections}
+          />
+        </div>
+      )}
+
+      {/* Tab Content: Marketing */}
+      {activeTab === 'marketing' && sellpage && (
+        <div className="max-w-4xl space-y-6">
+          {/* UTM Link Generator */}
+          <UTMLinkGenerator
+            baseUrl={
+              sellpage.store?.primaryDomain
+                ? `https://${sellpage.store.primaryDomain}/${sellpage.slug}`
+                : sellpage.store?.slug
+                ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${sellpage.store.slug}/${sellpage.slug}`
+                : `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/preview/${sellpage.id}`
+            }
           />
         </div>
       )}
@@ -625,6 +721,13 @@ export default function EditSellpagePage() {
         sellpageId={sellpageId as string}
         isOpen={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
+      />
+
+      {/* Template Selector Modal */}
+      <TemplateSelectorModal
+        isOpen={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+        onSelect={handleApplyTemplate}
       />
     </div>
   );

@@ -67,7 +67,29 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(node -e:*)",
+      "Bash(chmod:*)",
+      "Bash(railway --version:*)",
+      "Bash(npm install:*)",
+      "Bash(export RAILWAY_TOKEN=\"141fa7fb-2167-4de6-b16f-9da829af9baf\")",
+      "Bash(railway link:*)",
+      "Bash(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@139.59.243.200 \"echo ''Connection successful''; uname -a; cat /etc/os-release | grep PRETTY_NAME\")",
+      "Bash(sshpass -p 'pixel123' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@139.59.243.200 \"echo ''Connected successfully''; uname -a; df -h | head -5\")",
+      "Bash(ssh -i ~/.ssh/pixecom_vps -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@139.59.243.200 \"echo ''Connected successfully''; uname -a; cat /etc/os-release | grep PRETTY_NAME\")",
+      "Bash(tar:*)",
+      "Bash(powershell -Command \"Write-Host ''Creating archive...''; Compress-Archive -Path apps,packages,*.json,*.yaml,turbo.json,*.md,scripts,nginx,.env.example -DestinationPath pixecom-upload.zip -Force; Write-Host ''Archive created''; Get-Item pixecom-upload.zip | Select-Object Name,Length\")",
+      "Bash(scp:*)",
+      "Bash(powershell -Command \"$ProgressPreference = ''SilentlyContinue''; try { Invoke-WebRequest -Uri ''http://139.59.243.200:8765'' -Method GET -TimeoutSec 5 -UseBasicParsing | Select-Object -ExpandProperty StatusCode } catch { Write-Host ''Server not reachable:'' $_Exception.Message }\")",
+      "Bash(powershell -Command \"try { \\(Invoke-WebRequest -Uri ''http://139.59.243.200:8765'' -Method GET -TimeoutSec 5 -UseBasicParsing\\).StatusCode } catch { ''Server not reachable'' }\")",
+      "Bash(ssh:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm --filter api prisma:*)",
+      "Bash(copy .env.example .env)",
+      "Bash(docker --version:*)",
+      "Bash(cd:*)",
+      "Bash(pnpm --filter api run prisma migrate:*)",
+      "Bash(copy \"..\\\\..\\\\..\\\\.env\" \".env\")"
     ]
   }
 }

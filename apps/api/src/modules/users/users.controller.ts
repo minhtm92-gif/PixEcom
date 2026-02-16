@@ -50,6 +50,13 @@ export class UsersController {
     return this.usersService.create(workspaceId, body);
   }
 
+  @Get('by-email/:email')
+  @Roles(MemberRole.ADMIN)
+  @ApiOperation({ summary: 'Find user by email address' })
+  findByEmail(@Param('email') email: string) {
+    return this.usersService.findByEmail(email);
+  }
+
   @Get(':id')
   @Roles(MemberRole.VIEWER)
   @ApiOperation({ summary: 'Get user by ID' })

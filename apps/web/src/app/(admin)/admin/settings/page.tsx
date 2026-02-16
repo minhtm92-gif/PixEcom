@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal, ModalFooter } from '@/components/ui/modal';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/cn';
 import {
@@ -32,6 +33,8 @@ interface WorkspaceSettings {
   supportPhone: string;
   defaultCurrency: string;
   timezone: string;
+  logoUrl?: string;
+  faviconUrl?: string;
   [key: string]: unknown;
 }
 
@@ -150,6 +153,8 @@ function GeneralTab() {
     supportPhone: '',
     defaultCurrency: 'USD',
     timezone: 'UTC',
+    logoUrl: '',
+    faviconUrl: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -167,6 +172,8 @@ function GeneralTab() {
           supportPhone: data.supportPhone || '',
           defaultCurrency: data.defaultCurrency || 'USD',
           timezone: data.timezone || 'UTC',
+          logoUrl: data.logoUrl || '',
+          faviconUrl: data.faviconUrl || '',
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to load settings';
@@ -227,72 +234,110 @@ function GeneralTab() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="max-w-lg space-y-4">
-          <Input
-            label="Brand Name"
-            placeholder="My Store"
-            value={settings.brandName}
-            onChange={(e) =>
-              setSettings((s) => ({ ...s, brandName: e.target.value }))
-            }
-          />
-          <Input
-            label="Support Email"
-            type="email"
-            placeholder="support@example.com"
-            value={settings.supportEmail}
-            onChange={(e) =>
-              setSettings((s) => ({ ...s, supportEmail: e.target.value }))
-            }
-          />
-          <Input
-            label="Support Phone"
-            type="tel"
-            placeholder="+1 (555) 000-0000"
-            value={settings.supportPhone}
-            onChange={(e) =>
-              setSettings((s) => ({ ...s, supportPhone: e.target.value }))
-            }
-          />
+        <div className="max-w-2xl space-y-6">
+          {/* Brand Identity Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100 border-b border-surface-200 dark:border-surface-700 pb-2">
+              Brand Identity
+            </h3>
 
-          {/* Currency select */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-surface-700">
-              Default Currency
-            </label>
-            <select
-              value={settings.defaultCurrency}
+            <Input
+              label="Brand Name"
+              placeholder="My Store"
+              value={settings.brandName}
               onChange={(e) =>
-                setSettings((s) => ({ ...s, defaultCurrency: e.target.value }))
+                setSettings((s) => ({ ...s, brandName: e.target.value }))
               }
-              className="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2.5 text-sm text-surface-900 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            />
+
+            <ImageUpload
+              label="Logo"
+              value={settings.logoUrl}
+              onChange={(url) => setSettings((s) => ({ ...s, logoUrl: url }))}
+              dimensions="400x400px"
+              helpText="PNG, JPG or WebP. Max 2MB."
+            />
+
+            <ImageUpload
+              label="Favicon"
+              value={settings.faviconUrl}
+              onChange={(url) => setSettings((s) => ({ ...s, faviconUrl: url }))}
+              dimensions="32x32px or 64x64px"
+              helpText="Shown in browser tabs. PNG or ICO format preferred."
+            />
           </div>
 
-          {/* Timezone select */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-surface-700">
-              Timezone
-            </label>
-            <select
-              value={settings.timezone}
+          {/* Contact Information Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100 border-b border-surface-200 dark:border-surface-700 pb-2">
+              Contact Information
+            </h3>
+
+            <Input
+              label="Support Email"
+              type="email"
+              placeholder="support@example.com"
+              value={settings.supportEmail}
               onChange={(e) =>
-                setSettings((s) => ({ ...s, timezone: e.target.value }))
+                setSettings((s) => ({ ...s, supportEmail: e.target.value }))
               }
-              className="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2.5 text-sm text-surface-900 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-            >
-              {TIMEZONES.map((tz) => (
-                <option key={tz} value={tz}>
-                  {tz}
-                </option>
-              ))}
-            </select>
+            />
+            <Input
+              label="Support Phone"
+              type="tel"
+              placeholder="+1 (555) 000-0000"
+              value={settings.supportPhone}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, supportPhone: e.target.value }))
+              }
+            />
+          </div>
+
+          {/* Regional Settings Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100 border-b border-surface-200 dark:border-surface-700 pb-2">
+              Regional Settings
+            </h3>
+
+            {/* Currency select */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">
+                Default Currency
+              </label>
+              <select
+                value={settings.defaultCurrency}
+                onChange={(e) =>
+                  setSettings((s) => ({ ...s, defaultCurrency: e.target.value }))
+                }
+                className="block w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 px-3 py-2.5 text-sm text-surface-900 dark:text-surface-100 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Timezone select */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">
+                Timezone
+              </label>
+              <select
+                value={settings.timezone}
+                onChange={(e) =>
+                  setSettings((s) => ({ ...s, timezone: e.target.value }))
+                }
+                className="block w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 px-3 py-2.5 text-sm text-surface-900 dark:text-surface-100 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              >
+                {TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 pt-2">
@@ -680,10 +725,12 @@ function AddProviderModal({
 }
 
 // ========================================================================
-// LEGAL TAB (placeholder)
+// LEGAL TAB
 // ========================================================================
 
 function LegalTab() {
+  const router = useRouter();
+
   return (
     <Card>
       <CardHeader>
@@ -693,14 +740,13 @@ function LegalTab() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="py-8 text-center">
-          <Scale className="mx-auto h-12 w-12 text-surface-300" />
-          <p className="mt-4 text-sm font-medium text-surface-900">
-            Legal policies management coming soon
+        <div className="space-y-4">
+          <p className="text-sm text-surface-600">
+            Create and manage legal documents such as Terms of Service, Privacy Policy, Refund Policy, and more.
           </p>
-          <p className="mt-1 text-sm text-surface-500">
-            You will be able to manage privacy policies, terms of service, refund policies, and more.
-          </p>
+          <Button onClick={() => router.push('/admin/settings/legal')}>
+            Manage Legal Policies
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -712,6 +758,8 @@ function LegalTab() {
 // ========================================================================
 
 function TeamTab() {
+  const router = useRouter();
+
   return (
     <Card>
       <CardHeader>
@@ -721,14 +769,13 @@ function TeamTab() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="py-8 text-center">
-          <Users className="mx-auto h-12 w-12 text-surface-300" />
-          <p className="mt-4 text-sm font-medium text-surface-900">
-            Team management coming soon
+        <div className="space-y-4">
+          <p className="text-sm text-surface-600 dark:text-surface-400">
+            Invite team members, assign roles, and manage permissions for your workspace.
           </p>
-          <p className="mt-1 text-sm text-surface-500">
-            You will be able to invite team members, assign roles, and manage permissions.
-          </p>
+          <Button onClick={() => router.push('/admin/settings/team')}>
+            Manage Team Members
+          </Button>
         </div>
       </CardContent>
     </Card>
