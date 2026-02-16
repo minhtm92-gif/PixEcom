@@ -198,17 +198,19 @@ export function BulkImageUploader({
         });
 
         // Upload to API
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/products/${productId}/media/bulk`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${getAccessToken()}`,
-              'X-Workspace-Id': getWorkspaceId() || '',
-            },
-            body: formData,
-          }
-        );
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+        const endpoint = API_BASE.endsWith('/api')
+          ? `${API_BASE}/products/${productId}/media/bulk`
+          : `${API_BASE}/api/products/${productId}/media/bulk`;
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${getAccessToken()}`,
+            'X-Workspace-Id': getWorkspaceId() || '',
+          },
+          body: formData,
+        });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
