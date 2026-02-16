@@ -655,7 +655,11 @@ export default function EditProductPage() {
                     size="sm"
                     variant="secondary"
                     leftIcon={<Plus className="h-4 w-4" />}
-                    onClick={() => setShowAddVariant(!showAddVariant)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowAddVariant(!showAddVariant);
+                    }}
                   >
                     Add Variant
                   </Button>
@@ -751,7 +755,9 @@ export default function EditProductPage() {
                         type="button"
                         size="sm"
                         variant="secondary"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           setShowAddVariant(false);
                           setNewVariantOptions([{ key: '', value: '' }]);
                         }}
@@ -761,7 +767,11 @@ export default function EditProductPage() {
                       <Button
                         type="button"
                         size="sm"
-                        onClick={handleAddVariant}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleAddVariant();
+                        }}
                         isLoading={isAddingVariant}
                       >
                         Add
