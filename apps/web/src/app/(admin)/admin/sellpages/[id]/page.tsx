@@ -71,11 +71,13 @@ export default function EditSellpagePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showDomainVerifyModal, setShowDomainVerifyModal] = useState(false);
   const [sellpage, setSellpage] = useState<SellpageData | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'design' | 'seo' | 'tracking'>('details');
   const [pageSections, setPageSections] = useState<SectionData[]>([]);
   const [product, setProduct] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [expectedIp, setExpectedIp] = useState<string>('');
 
   const [form, setForm] = useState({
     slug: '',
@@ -96,7 +98,17 @@ export default function EditSellpagePage() {
 
   useEffect(() => {
     fetchSellpage();
+    fetchExpectedIp();
   }, [sellpageId]);
+
+  async function fetchExpectedIp() {
+    try {
+      const data = await apiClient.get<{ expectedIp: string }>('/domains/expected-ip');
+      setExpectedIp(data.expectedIp);
+    } catch (err) {
+      console.error('Failed to fetch expected IP:', err);
+    }
+  }
 
   async function fetchSellpage() {
     try {
@@ -175,6 +187,11 @@ export default function EditSellpagePage() {
         seoTitle: form.seoTitle.trim() || undefined,
         seoDescription: form.seoDescription.trim() || undefined,
         seoOgImage: form.seoOgImage.trim() || undefined,
+        sellpageDomain: form.sellpageDomain.trim() || undefined,
+        facebookPixelId: form.facebookPixelId.trim() || undefined,
+        tiktokPixelId: form.tiktokPixelId.trim() || undefined,
+        googleAnalyticsId: form.googleAnalyticsId.trim() || undefined,
+        googleTagManagerId: form.googleTagManagerId.trim() || undefined,
       });
       await fetchSellpage();
     } catch (err: unknown) {
@@ -459,14 +476,32 @@ export default function EditSellpagePage() {
                 hint="URL path for this sellpage"
                 required
               />
-              <Input
-                label="Sellpage Domain"
-                placeholder="offer.example.com"
-                value={form.sellpageDomain}
-                onChange={(e) => updateField('sellpageDomain', e.target.value)}
-                error={fieldErrors.sellpageDomain}
-                hint="Custom domain for this sellpage (optional)"
-              />
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      label="Sellpage Domain"
+                      placeholder="offer.example.com"
+                      value={form.sellpageDomain}
+                      onChange={(e) => updateField('sellpageDomain', e.target.value)}
+                      error={fieldErrors.sellpageDomain}
+                      hint="Custom domain for this sellpage (optional)"
+                    />
+                  </div>
+                  {form.sellpageDomain && (
+                    <div className="flex items-end pb-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowDomainVerifyModal(true)}
+                        className="whitespace-nowrap"
+                      >
+                        Verify Domain
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
               <Input
                 label="Title Override"
                 placeholder="Custom page title (optional)"
@@ -821,6 +856,121 @@ export default function EditSellpagePage() {
         onClose={() => setShowTemplateModal(false)}
         onSelect={handleApplyTemplate}
       />
+
+      {/* Domain Verification Modal */}
+      <Modal
+        isOpen={showDomainVerifyModal}
+        onClose={() => setShowDomainVerifyModal(false)}
+        title="Verify Sellpage Domain"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 p-4">
+            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+              DNS Configuration Required
+            </h4>
+            <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+              To use a custom domain for this sellpage, you need to point your domain to our server.
+            </p>
+            <div className="bg-white dark:bg-surface-900 rounded border border-blue-200 dark:border-blue-700 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-surface-600 dark:text-surface-400">
+                  Domain:
+                </span>
+                <code className="text-sm font-mono text-surface-900 dark:text-surface-100">
+                  {form.sellpageDomain}
+                </code>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-surface-600 dark:text-surface-400">
+                  Points to IP:
+                </span>
+                <code className="text-sm font-mono text-brand-600 dark:text-brand-400">
+                  {expectedIp || 'Loading...'}
+                </code>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-surface-900 dark:text-surface-100">
+              Step 1: Add A Record
+            </h4>
+            <p className="text-sm text-surface-600 dark:text-surface-400">
+              Go to your domain DNS settings and add an A record:
+            </p>
+            <div className="rounded-lg border border-surface-200 dark:border-surface-700 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-50 dark:bg-surface-800">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium text-surface-700 dark:text-surface-300">
+                      Type
+                    </th>
+                    <th className="px-4 py-2 text-left font-medium text-surface-700 dark:text-surface-300">
+                      Name
+                    </th>
+                    <th className="px-4 py-2 text-left font-medium text-surface-700 dark:text-surface-300">
+                      Value
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-t border-surface-200 dark:border-surface-700">
+                    <td className="px-4 py-3">
+                      <code className="text-xs font-mono bg-surface-100 dark:bg-surface-800 px-2 py-1 rounded">
+                        A
+                      </code>
+                    </td>
+                    <td className="px-4 py-3">
+                      <code className="text-xs font-mono bg-surface-100 dark:bg-surface-800 px-2 py-1 rounded">
+                        @ or {form.sellpageDomain}
+                      </code>
+                    </td>
+                    <td className="px-4 py-3">
+                      <code className="text-xs font-mono bg-surface-100 dark:bg-surface-800 px-2 py-1 rounded">
+                        {expectedIp || '...'}
+                      </code>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-surface-900 dark:text-surface-100">
+              Step 2: Wait for DNS Propagation
+            </h4>
+            <p className="text-sm text-surface-600 dark:text-surface-400">
+              DNS changes can take 1-48 hours to propagate globally. Most changes happen within 1-2 hours.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-4">
+            <div className="flex gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                  Important Notes
+                </h4>
+                <ul className="text-sm text-amber-800 dark:text-amber-200 space-y-1 list-disc list-inside">
+                  <li>Save your sellpage before adding DNS records</li>
+                  <li>DNS propagation is automatic - you don't need to verify manually</li>
+                  <li>Once DNS propagates, your sellpage will be accessible at this domain</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ModalFooter>
+          <Button
+            variant="secondary"
+            onClick={() => setShowDomainVerifyModal(false)}
+          >
+            Close
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }
