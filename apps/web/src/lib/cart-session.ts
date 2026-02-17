@@ -1,7 +1,10 @@
 'use client';
 
 const SESSION_KEY = 'pixecom_cart_session';
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+// Use relative /api path so requests go through nginx on the same domain
+// This works for both custom domains (stretchactive.circlekar.com/api → port 3001)
+// and the admin domain (pixecom.pixelxlab.com/api → port 3001)
+const API_BASE = '/api';
 
 // Get or create a persistent cart session ID (used as fallback for checkout)
 export function getCartSessionId(): string {
