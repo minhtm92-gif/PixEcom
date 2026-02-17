@@ -99,7 +99,7 @@ export function ProductHero({ data, product, isPreview = false }: ProductHeroPro
 
   // Group variants by option keys for color/size selectors
   const variants = product?.variants || [];
-  const hasVariants = variants.length > 1;
+  const hasVariants = variants.length >= 1;
 
   return (
     <div className="bg-white">
