@@ -1,6 +1,9 @@
 import { notFound } from 'next/navigation';
 import { SectionRenderer } from '@/components/sellpage/SectionRenderer';
 import { TrackingProvider } from '@/components/tracking/TrackingProvider';
+import { SellpageHeader } from '@/components/sellpage/SellpageHeader';
+import { SellpageFooter } from '@/components/sellpage/SellpageFooter';
+import { CartDrawer } from '@/components/sellpage/CartDrawer';
 
 interface PageProps {
   params: {
@@ -11,8 +14,9 @@ interface PageProps {
 
 async function getSellpageData(storeSlug: string, sellpageSlug: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const res = await fetch(`${baseUrl}/public/stores/${storeSlug}/sellpages/${sellpageSlug}`, {
+    // Use internal URL on server to avoid going through nginx/SSL
+    const apiUrl = 'http://localhost:3001/api';
+    const res = await fetch(`${apiUrl}/public/stores/${storeSlug}/sellpages/${sellpageSlug}`, {
       cache: 'no-store',
     });
 
@@ -20,7 +24,9 @@ async function getSellpageData(storeSlug: string, sellpageSlug: string) {
       return null;
     }
 
-    return res.json();
+    const json = await res.json();
+    // Unwrap { data: { sellpage, product, reviews } } → { sellpage, product, reviews }
+    return json?.data || json;
   } catch (error) {
     console.error('Failed to fetch sellpage:', error);
     return null;
@@ -34,12 +40,21 @@ export default async function PublicSellpagePage({ params }: PageProps) {
     notFound();
   }
 
-  const { sellpage, product, reviews } = data;
+  const { sellpage, product, reviews, store, legalPolicies = [] } = data;
 
   // If sellpage is not published, show 404
-  if (sellpage.status !== 'PUBLISHED') {
+  if (!sellpage || sellpage.status !== 'PUBLISHED') {
     notFound();
   }
+
+  // Build the header component to inject after the announcement bar
+  const headerSlot = store ? (
+    <SellpageHeader
+      store={store}
+      sellpageSlug={sellpage.slug}
+      legalPolicies={legalPolicies}
+    />
+  ) : null;
 
   return (
     <>
@@ -51,15 +66,29 @@ export default async function PublicSellpagePage({ params }: PageProps) {
         googleTagManagerId={sellpage.googleTagManagerId}
       />
 
-      <div className="min-h-screen bg-white">
-        {/* Render page sections */}
-        <SectionRenderer
-          sections={sellpage.sections || []}
-          product={product}
-          reviews={reviews}
-          isPreview={false}
-        />
+      <div className="min-h-screen bg-white flex flex-col">
+        {/* SectionRenderer injects the header after the announcement-bar */}
+        <main className="flex-1">
+          <SectionRenderer
+            sections={sellpage.sections || []}
+            product={product}
+            reviews={reviews}
+            isPreview={false}
+            headerSlot={headerSlot}
+          />
+        </main>
+
+        {/* Footer */}
+        {store && (
+          <SellpageFooter
+            store={store}
+            legalPolicies={legalPolicies}
+          />
+        )}
       </div>
+
+      {/* Cart Drawer - slides in from right */}
+      <CartDrawer />
     </>
   );
 }

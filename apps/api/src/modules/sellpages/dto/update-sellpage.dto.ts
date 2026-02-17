@@ -122,4 +122,16 @@ export class UpdateSellpageDto {
   @IsString()
   @MaxLength(100)
   googleTagManagerId?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/logo.png' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  logoUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/favicon.ico' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  faviconUrl?: string;
 }

@@ -21,9 +21,10 @@ interface SectionRendererProps {
   product: any;
   reviews?: any[];
   isPreview?: boolean;
+  headerSlot?: React.ReactNode;
 }
 
-export function SectionRenderer({ sections, product, reviews = [], isPreview = false }: SectionRendererProps) {
+export function SectionRenderer({ sections, product, reviews = [], isPreview = false, headerSlot }: SectionRendererProps) {
   // Filter out invalid/empty sections
   const validSections = sections.filter(section => section && typeof section === 'object' && section.type);
 
@@ -48,32 +49,58 @@ export function SectionRenderer({ sections, product, reviews = [], isPreview = f
     );
   }
 
+  const renderedSections: React.ReactNode[] = [];
+  let headerInjected = !headerSlot; // if no headerSlot, skip injection
+
+  validSections.forEach((section, index) => {
+    let rendered: React.ReactNode = null;
+
+    switch (section.type) {
+      case 'announcement-bar':
+        rendered = <AnnouncementBar key={index} data={section} isPreview={isPreview} />;
+        break;
+      case 'product-hero':
+        rendered = <ProductHero key={index} data={section} product={product} isPreview={isPreview} />;
+        break;
+      case 'social-proof':
+        rendered = <SocialProof key={index} data={section} isPreview={isPreview} />;
+        break;
+      case 'product-benefits':
+        rendered = <ProductBenefits key={index} data={section} isPreview={isPreview} />;
+        break;
+      case 'reviews-section':
+        rendered = <ReviewsSection key={index} data={section} reviews={reviews} isPreview={isPreview} />;
+        break;
+      case 'product-description':
+        rendered = <ProductDescription key={index} data={section} product={product} isPreview={isPreview} />;
+        break;
+      default:
+        rendered = null;
+    }
+
+    if (rendered) {
+      renderedSections.push(rendered);
+    }
+
+    // Inject the header slot after the first announcement-bar section
+    if (!headerInjected && section.type === 'announcement-bar') {
+      renderedSections.push(
+        <React.Fragment key={`header-slot-${index}`}>{headerSlot}</React.Fragment>
+      );
+      headerInjected = true;
+    }
+  });
+
+  // If there was no announcement-bar but we have a headerSlot, inject at top
+  if (!headerInjected && headerSlot) {
+    renderedSections.unshift(
+      <React.Fragment key="header-slot-top">{headerSlot}</React.Fragment>
+    );
+  }
+
   return (
     <div className="min-h-screen">
-      {validSections.map((section, index) => {
-        switch (section.type) {
-          case 'announcement-bar':
-            return <AnnouncementBar key={index} data={section} isPreview={isPreview} />;
-
-          case 'product-hero':
-            return <ProductHero key={index} data={section} product={product} isPreview={isPreview} />;
-
-          case 'social-proof':
-            return <SocialProof key={index} data={section} isPreview={isPreview} />;
-
-          case 'product-benefits':
-            return <ProductBenefits key={index} data={section} isPreview={isPreview} />;
-
-          case 'reviews-section':
-            return <ReviewsSection key={index} data={section} reviews={reviews} isPreview={isPreview} />;
-
-          case 'product-description':
-            return <ProductDescription key={index} data={section} product={product} isPreview={isPreview} />;
-
-          default:
-            return null;
-        }
-      })}
+      {renderedSections}
     </div>
   );
 }

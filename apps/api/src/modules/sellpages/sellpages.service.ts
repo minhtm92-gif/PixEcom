@@ -175,6 +175,8 @@ export class SellpagesService {
     if (dto.tiktokPixelId !== undefined) data.tiktokPixelId = dto.tiktokPixelId;
     if (dto.googleAnalyticsId !== undefined) data.googleAnalyticsId = dto.googleAnalyticsId;
     if (dto.googleTagManagerId !== undefined) data.googleTagManagerId = dto.googleTagManagerId;
+    if (dto.logoUrl !== undefined) data.logoUrl = dto.logoUrl;
+    if (dto.faviconUrl !== undefined) data.faviconUrl = dto.faviconUrl;
 
     return this.prisma.sellpage.update({
       where: { id: sellpageId },

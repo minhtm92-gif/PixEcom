@@ -289,6 +289,20 @@ export class PublicService {
       },
     });
 
+    // Get legal policies for this store
+    const legalPolicies = await this.prisma.legalPolicy
+      .findMany({
+        where: {
+          isActive: true,
+          ...(store.legalSetId
+            ? { legalSetId: store.legalSetId }
+            : { workspaceId: store.workspaceId }),
+        },
+        select: { id: true, title: true, slug: true, policyType: true },
+        orderBy: { displayOrder: 'asc' },
+      })
+      .catch(() => []);
+
     return {
       sellpage: {
         id: sellpage.id,
@@ -297,7 +311,25 @@ export class PublicService {
         descriptionOverride: sellpage.descriptionOverride,
         sections: sellpage.sections,
         status: sellpage.status,
+        logoUrl: (sellpage as any).logoUrl || null,
+        faviconUrl: (sellpage as any).faviconUrl || null,
+        seoTitle: (sellpage as any).seoTitle || null,
+        seoDescription: (sellpage as any).seoDescription || null,
+        seoOgImage: (sellpage as any).seoOgImage || null,
+        facebookPixelId: (sellpage as any).facebookPixelId || null,
+        tiktokPixelId: (sellpage as any).tiktokPixelId || null,
+        googleAnalyticsId: (sellpage as any).googleAnalyticsId || null,
+        googleTagManagerId: (sellpage as any).googleTagManagerId || null,
       },
+      store: {
+        name: store.name,
+        slug: store.slug,
+        logoUrl: (sellpage as any).logoUrl || (store as any).logoUrl || null,
+        faviconUrl: (sellpage as any).faviconUrl || (store as any).faviconUrl || null,
+        brandColor: (store as any).brandColor || null,
+        primaryDomain: (store as any).primaryDomain || null,
+      },
+      legalPolicies,
       product: {
         id: sellpage.product.id,
         name: sellpage.product.name,
