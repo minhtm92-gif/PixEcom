@@ -173,6 +173,15 @@ enum DomainStatus {
   @@map("domain_status")
 }
 
+enum SslStatus {
+  NONE
+  PROVISIONING
+  ACTIVE
+  FAILED
+
+  @@map("ssl_status")
+}
+
 model StoreDomain {
   id              String                   @id @default(uuid()) @db.Uuid
   storeId         String                   @map("store_id") @db.Uuid
@@ -186,6 +195,10 @@ model StoreDomain {
   failureReason   String?                  @map("failure_reason") @db.Text
   isPrimary       Boolean                  @default(false) @map("is_primary")
   isActive        Boolean                  @default(true) @map("is_active")
+  sslStatus       SslStatus                @default(NONE) @map("ssl_status")
+  sslProvisionedAt DateTime?               @map("ssl_provisioned_at") @db.Timestamptz
+  sslExpiresAt    DateTime?                @map("ssl_expires_at") @db.Timestamptz
+  sslError        String?                  @map("ssl_error") @db.Text
   createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -194,6 +207,7 @@ model StoreDomain {
   @@unique([storeId, hostname], name: "uq_store_domain_hostname")
   @@index([storeId])
   @@index([status])
+  @@index([sslStatus])
   @@map("store_domains")
 }
 

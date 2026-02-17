@@ -2,7 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DomainsVerificationService } from './domains-verification.service';
-import { DomainStatus } from '@prisma/client';
+import { DomainsSslService } from './domains-ssl.service';
+import { DomainStatus, SslStatus } from '@prisma/client';
 
 @Injectable()
 export class DomainsJob {
@@ -11,6 +12,7 @@ export class DomainsJob {
   constructor(
     private readonly prisma: PrismaService,
     private readonly verificationService: DomainsVerificationService,
+    private readonly sslService: DomainsSslService,
   ) {}
 
   /**
@@ -60,6 +62,12 @@ export class DomainsJob {
           if (result.success) {
             verifiedCount++;
             this.logger.log(`✓ Domain ${domain.hostname} VERIFIED`);
+            // Trigger SSL provisioning in background
+            this.sslService.provisionSsl(domain.id).catch((err) =>
+              this.logger.error(
+                `Background SSL provisioning failed for ${domain.hostname}: ${err.message}`,
+              ),
+            );
           } else {
             failedCount++;
             this.logger.warn(
@@ -135,6 +143,12 @@ export class DomainsJob {
           if (result.success) {
             recoveredCount++;
             this.logger.log(`✓ Domain ${domain.hostname} RECOVERED`);
+            // Trigger SSL provisioning in background
+            this.sslService.provisionSsl(domain.id).catch((err) =>
+              this.logger.error(
+                `Background SSL provisioning failed for ${domain.hostname}: ${err.message}`,
+              ),
+            );
           }
         } catch (error) {
           this.logger.error(
@@ -146,6 +160,48 @@ export class DomainsJob {
       this.logger.log(`Failed domain recheck complete. Recovered: ${recoveredCount}`);
     } catch (error) {
       this.logger.error(`Failed domain recheck job failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Provision SSL for verified domains that don't have it yet.
+   * Runs every 5 minutes, processes up to 5 domains.
+   */
+  @Cron('*/5 * * * *', {
+    name: 'provision-ssl-for-verified-domains',
+  })
+  async provisionSslForVerifiedDomains() {
+    try {
+      const domains = await this.prisma.storeDomain.findMany({
+        where: {
+          status: DomainStatus.VERIFIED,
+          isActive: true,
+          sslStatus: { in: [SslStatus.NONE, SslStatus.FAILED] },
+        },
+        take: 5,
+        orderBy: { updatedAt: 'asc' },
+      });
+
+      if (domains.length === 0) return;
+
+      this.logger.log(
+        `Found ${domains.length} verified domains needing SSL provisioning`,
+      );
+
+      for (const domain of domains) {
+        const result = await this.sslService.provisionSsl(domain.id);
+        if (result.success) {
+          this.logger.log(`✓ SSL provisioned for ${domain.hostname}`);
+        } else {
+          this.logger.warn(
+            `✗ SSL provisioning failed for ${domain.hostname}: ${result.error}`,
+          );
+        }
+        // Delay between certbot runs to avoid rate limits
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    } catch (error) {
+      this.logger.error(`SSL provisioning job failed: ${error.message}`);
     }
   }
 }

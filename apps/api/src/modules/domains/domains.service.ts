@@ -1,10 +1,12 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DomainsVerificationService } from './domains-verification.service';
+import { DomainsSslService } from './domains-ssl.service';
 import { CreateDomainDto } from './dto/create-domain.dto';
 import { UpdateDomainDto } from './dto/update-domain.dto';
 import { DomainStatus, DomainVerificationMethod } from '@prisma/client';
@@ -12,9 +14,12 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class DomainsService {
+  private readonly logger = new Logger(DomainsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly verificationService: DomainsVerificationService,
+    private readonly sslService: DomainsSslService,
   ) {}
 
   /**
@@ -156,6 +161,9 @@ export class DomainsService {
       }
     }
 
+    // Remove SSL certificate and nginx config
+    await this.sslService.removeSsl(domain.hostname);
+
     await this.prisma.storeDomain.delete({
       where: { id: domainId },
     });
@@ -180,6 +188,15 @@ export class DomainsService {
         failureReason: result.error || null,
       },
     });
+
+    // Trigger SSL provisioning in background if verification succeeded
+    if (result.success) {
+      this.sslService.provisionSsl(domainId).catch((err) =>
+        this.logger.error(
+          `Background SSL provisioning failed for ${domain.hostname}: ${err.message}`,
+        ),
+      );
+    }
 
     return {
       ...updatedDomain,
@@ -214,10 +231,24 @@ export class DomainsService {
       throw new NotFoundException('Domain not found or not verified');
     }
 
+    // Find first sellpage for root path routing
+    let primarySellpageSlug = null;
+    if (domain.store) {
+      const firstSellpage = await this.prisma.sellpage.findFirst({
+        where: { storeId: domain.store.id },
+        select: { slug: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      primarySellpageSlug = firstSellpage ? firstSellpage.slug : null;
+    }
+
     return {
       domain: domain.hostname,
       isPrimary: domain.isPrimary,
-      store: domain.store,
+      store: {
+        ...domain.store,
+        primarySellpage: primarySellpageSlug,
+      },
     };
   }
 

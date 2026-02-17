@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,6 +19,7 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { DomainsService } from './domains.service';
+import { DomainsSslService } from './domains-ssl.service';
 import { CreateDomainDto } from './dto/create-domain.dto';
 import { UpdateDomainDto } from './dto/update-domain.dto';
 import { WorkspaceGuard } from '../../common/guards/workspace.guard';
@@ -31,7 +33,10 @@ import { MemberRole } from '@prisma/client';
 @UseGuards(WorkspaceGuard, RolesGuard)
 @Controller('stores/:storeId/domains')
 export class DomainsController {
-  constructor(private readonly domainsService: DomainsService) {}
+  constructor(
+    private readonly domainsService: DomainsService,
+    private readonly sslService: DomainsSslService,
+  ) {}
 
   @Post()
   @Roles(MemberRole.ADMIN)
@@ -101,6 +106,28 @@ export class DomainsController {
       workspaceId,
       updateDomainDto,
     );
+  }
+
+  @Post(':domainId/provision-ssl')
+  @Roles(MemberRole.ADMIN)
+  @ApiOperation({ summary: 'Manually trigger SSL provisioning for a verified domain' })
+  @ApiResponse({ status: 200, description: 'SSL provisioning triggered' })
+  @ApiResponse({ status: 400, description: 'Domain must be verified first' })
+  @ApiResponse({ status: 404, description: 'Domain not found' })
+  async provisionSsl(
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('domainId', ParseUUIDPipe) domainId: string,
+    @CurrentWorkspace('id') workspaceId: string,
+  ) {
+    const domain = await this.domainsService.findOne(domainId, storeId, workspaceId);
+
+    if (domain.status !== 'VERIFIED') {
+      throw new BadRequestException(
+        'Domain must be verified before SSL can be provisioned',
+      );
+    }
+
+    return this.sslService.provisionSsl(domainId);
   }
 
   @Delete(':domainId')
