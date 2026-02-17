@@ -97,7 +97,10 @@ export class CartService {
       throw new BadRequestException('Product is not currently available');
     }
 
-    if (variant.stockQuantity < quantity) {
+    // 999999 = unlimited stock, skip stock check
+    const isUnlimited = variant.stockQuantity >= 999999;
+
+    if (!isUnlimited && variant.stockQuantity < quantity) {
       throw new BadRequestException(
         `Insufficient stock. Only ${variant.stockQuantity} available.`,
       );
@@ -126,7 +129,7 @@ export class CartService {
     if (existingItem) {
       const newQuantity = existingItem.quantity + quantity;
 
-      if (variant.stockQuantity < newQuantity) {
+      if (!isUnlimited && variant.stockQuantity < newQuantity) {
         throw new BadRequestException(
           `Insufficient stock. Only ${variant.stockQuantity} available (${existingItem.quantity} already in cart).`,
         );
@@ -174,7 +177,8 @@ export class CartService {
       throw new NotFoundException('Cart item not found');
     }
 
-    if (cartItem.variant.stockQuantity < quantity) {
+    // 999999 = unlimited stock, skip stock check
+    if (cartItem.variant.stockQuantity < 999999 && cartItem.variant.stockQuantity < quantity) {
       throw new BadRequestException(
         `Insufficient stock. Only ${cartItem.variant.stockQuantity} available.`,
       );
