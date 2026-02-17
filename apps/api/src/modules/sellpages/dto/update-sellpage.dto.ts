@@ -4,12 +4,14 @@ import {
   IsUUID,
   IsArray,
   IsObject,
+  IsEnum,
   MinLength,
   MaxLength,
   Matches,
   IsUrl,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { SellpageStatus } from '@prisma/client';
 
 export class UpdateSellpageDto {
   @ApiPropertyOptional({ example: 'updated-offer-slug' })
@@ -33,6 +35,11 @@ export class UpdateSellpageDto {
   @IsString()
   @MaxLength(255)
   customDomain?: string;
+
+  @ApiPropertyOptional({ enum: SellpageStatus, example: 'DRAFT' })
+  @IsOptional()
+  @IsEnum(SellpageStatus)
+  status?: SellpageStatus;
 
   @ApiPropertyOptional({ example: 'Updated Title Override' })
   @IsOptional()
