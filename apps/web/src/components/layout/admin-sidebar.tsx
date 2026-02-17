@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
+import { apiClient } from '@/lib/api-client';
 import {
   LayoutDashboard,
   Package,
@@ -39,6 +40,19 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ collapsed = false, onToggle }: AdminSidebarProps) {
   const pathname = usePathname();
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [brandName, setBrandName] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiClient.get<{ logoUrl?: string; brandName?: string }>('/settings')
+      .then((data) => {
+        if (data?.logoUrl) setLogoUrl(data.logoUrl);
+        if (data?.brandName) setBrandName(data.brandName);
+      })
+      .catch(() => {
+        // Silently fail — show default branding
+      });
+  }, []);
 
   const isActive = (href: string) => {
     if (href === '/admin') {
@@ -57,11 +71,23 @@ export function AdminSidebar({ collapsed = false, onToggle }: AdminSidebarProps)
       {/* Logo */}
       <div className="flex h-16 items-center border-b border-surface-200 px-4">
         <Link href="/admin" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-            <span className="text-sm font-bold text-white">P</span>
-          </div>
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={brandName || 'Logo'}
+              className="h-8 w-8 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
+              <span className="text-sm font-bold text-white">
+                {brandName ? brandName.charAt(0).toUpperCase() : 'P'}
+              </span>
+            </div>
+          )}
           {!collapsed && (
-            <span className="text-lg font-bold text-surface-900">PixEcom</span>
+            <span className="text-lg font-bold text-surface-900">
+              {brandName || 'PixEcom'}
+            </span>
           )}
         </Link>
       </div>

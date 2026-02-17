@@ -35,11 +35,9 @@ export class StorageService {
     // Write file to disk
     await fs.writeFile(filepath, file.buffer);
 
-    // Get base URL from environment or use default
-    const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
-
-    // Return full URL (served by Express static middleware)
-    return `${baseUrl}/uploads/${subfolder}/${filename}`;
+    // Return relative URL so it works from any domain (main or custom)
+    // Nginx serves /uploads from the upload directory on all server blocks
+    return `/uploads/${subfolder}/${filename}`;
   }
 
   /**

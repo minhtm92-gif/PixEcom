@@ -5,7 +5,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as cookieParser from 'cookie-parser';
 import * as express from 'express';
-import { join } from 'path';
+import { join, isAbsolute } from 'path';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -21,7 +21,8 @@ async function bootstrap() {
   const uploadDir = config.get<string>('UPLOAD_DIR', './uploads');
 
   // Serve static files FIRST, before any other middleware
-  const uploadsPath = join(process.cwd(), uploadDir);
+  // Handle both absolute paths (e.g., /var/www/pixecom/uploads) and relative paths (e.g., ./uploads)
+  const uploadsPath = isAbsolute(uploadDir) ? uploadDir : join(process.cwd(), uploadDir);
   console.log(`Serving static files from: ${uploadsPath}`);
   app.use('/uploads', express.static(uploadsPath));
 
@@ -29,18 +30,30 @@ async function bootstrap() {
   app.use(cookieParser());
   app.use(helmet());
 
-  // CORS configuration for Cloudflare deployment
-  const allowedOrigins = devMode
-    ? true
-    : [
-        config.get<string>('FRONTEND_URL', 'http://localhost:3000'),
-        config.get<string>('NEXT_PUBLIC_APP_URL', 'http://localhost:3000'),
-        // Add your Cloudflare Pages preview URLs
-        /\.pages\.dev$/,
-      ];
+  // CORS configuration
+  // In production, the API is behind nginx on the same server as the frontend,
+  // and custom domains (e.g., stretchactive.circlekar.com) need access too.
+  // Use a callback to dynamically allow origins.
+  const frontendUrl = config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+  const appUrl = config.get<string>('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: devMode
+      ? true
+      : (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+          // Allow requests with no origin (same-origin, server-to-server, curl)
+          if (!origin) return callback(null, true);
+          // Allow configured frontend URLs
+          if (origin === frontendUrl || origin === appUrl) return callback(null, true);
+          // Allow Cloudflare Pages preview URLs
+          if (origin.endsWith('.pages.dev')) return callback(null, true);
+          // Allow any custom domain that goes through our nginx (same server)
+          // Custom domains are proxied by nginx, so they're trusted
+          if (origin.startsWith('https://') || origin.startsWith('http://localhost')) {
+            return callback(null, true);
+          }
+          callback(null, false);
+        },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Workspace-Id'],
