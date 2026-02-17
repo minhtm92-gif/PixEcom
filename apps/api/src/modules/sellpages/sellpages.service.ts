@@ -154,9 +154,31 @@ export class SellpagesService {
   async update(workspaceId: string, sellpageId: string, dto: UpdateSellpageDto) {
     await this.ensureSellpageExists(workspaceId, sellpageId);
 
+    // Explicitly map only fields that exist on the Sellpage model
+    const data: any = {};
+    if (dto.slug !== undefined) data.slug = dto.slug;
+    if (dto.subdomain !== undefined) data.subdomain = dto.subdomain;
+    if (dto.customDomain !== undefined) data.customDomain = dto.customDomain;
+    if (dto.sellpageDomain !== undefined) data.sellpageDomain = dto.sellpageDomain;
+    if (dto.status !== undefined) data.status = dto.status;
+    if (dto.titleOverride !== undefined) data.titleOverride = dto.titleOverride;
+    if (dto.descriptionOverride !== undefined) data.descriptionOverride = dto.descriptionOverride;
+    if (dto.seoTitle !== undefined) data.seoTitle = dto.seoTitle;
+    if (dto.seoDescription !== undefined) data.seoDescription = dto.seoDescription;
+    if (dto.seoOgImage !== undefined) data.seoOgImage = dto.seoOgImage;
+    if (dto.headerConfig !== undefined) data.headerConfig = dto.headerConfig;
+    if (dto.footerConfig !== undefined) data.footerConfig = dto.footerConfig;
+    if (dto.boostModules !== undefined) data.boostModules = dto.boostModules;
+    if (dto.discountRules !== undefined) data.discountRules = dto.discountRules;
+    if (dto.assignedTo !== undefined) data.assignedTo = dto.assignedTo;
+    if (dto.facebookPixelId !== undefined) data.facebookPixelId = dto.facebookPixelId;
+    if (dto.tiktokPixelId !== undefined) data.tiktokPixelId = dto.tiktokPixelId;
+    if (dto.googleAnalyticsId !== undefined) data.googleAnalyticsId = dto.googleAnalyticsId;
+    if (dto.googleTagManagerId !== undefined) data.googleTagManagerId = dto.googleTagManagerId;
+
     return this.prisma.sellpage.update({
       where: { id: sellpageId },
-      data: dto,
+      data,
       include: {
         store: { select: { id: true, name: true, slug: true } },
         product: { select: { id: true, name: true, slug: true, basePrice: true } },
