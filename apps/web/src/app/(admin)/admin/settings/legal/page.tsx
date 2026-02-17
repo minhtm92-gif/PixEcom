@@ -52,7 +52,7 @@ export default function LegalSetsPage() {
       setLoading(true);
       setError(null);
       const data = await apiClient.get('/legal-sets');
-      setLegalSets(data);
+      setLegalSets(data as LegalSet[]);
     } catch (err: any) {
       setError(err.message || 'Failed to load legal sets');
     } finally {
